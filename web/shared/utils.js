@@ -1,5 +1,5 @@
 // Firebase Configuration provided by user
-const firebaseConfig = {
+window.firebaseConfig = {
   apiKey: "AIzaSyD07X5foiW-BtNUcECGqLWYvpG3RGxhfeI",
   authDomain: "bus-location-checker.firebaseapp.com",
   projectId: "bus-location-checker",
@@ -9,7 +9,7 @@ const firebaseConfig = {
 };
 
 // Encryption Helpers (AES-256-CBC)
-const Encryption = {
+window.Encryption = {
   encrypt(text, keyBase64) {
     const key = CryptoJS.enc.Base64.parse(keyBase64);
     const iv = CryptoJS.lib.WordArray.random(16);

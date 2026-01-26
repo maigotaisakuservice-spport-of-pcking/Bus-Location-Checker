@@ -60,7 +60,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseApp = initializeApp(firebaseConfig);
+        const firebaseApp = initializeApp(window.firebaseConfig);
         const db = getFirestore(firebaseApp);
 
         let isTracking = false;
@@ -72,7 +72,7 @@
 
         window.saveSettings = () => {
             const code = document.getElementById('invite-code').value;
-            const decoded = Encryption.decodeInviteCode(code);
+            const decoded = window.Encryption.decodeInviteCode(code);
             if (!decoded) {
                 alert("無効な招待コードです");
                 return;
@@ -153,7 +153,7 @@
         async function reportLocation() {
             if (!lastPosition || !isTracking) return;
             const locStr = `${lastPosition.coords.latitude},${lastPosition.coords.longitude}`;
-            const encLoc = Encryption.encrypt(locStr, authData.key);
+            const encLoc = window.Encryption.encrypt(locStr, authData.key);
 
             await updateDoc(doc(db, "buses", authData.busId), {
                 "status.encryptedLocation": encLoc,
@@ -169,8 +169,8 @@
             const vehicle = document.getElementById('vehicle-num').value;
             if (!route || !vehicle) return;
 
-            const encRoute = Encryption.encrypt(route, authData.key);
-            const encVehicle = Encryption.encrypt(vehicle, authData.key);
+            const encRoute = window.Encryption.encrypt(route, authData.key);
+            const encVehicle = window.Encryption.encrypt(vehicle, authData.key);
 
             await updateDoc(doc(db, "buses", authData.busId), {
                 "metadata.encryptedRouteName": encRoute,

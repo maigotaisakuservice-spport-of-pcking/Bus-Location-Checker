@@ -110,7 +110,7 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const app = initializeApp(firebaseConfig);
+        const app = initializeApp(window.firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const googleProvider = new GoogleAuthProvider();
@@ -147,8 +147,8 @@
                 if (!name) return;
 
                 const bus = buses.find(b => b.id === busId);
-                const encName = Encryption.encrypt(name, bus.encryptionKey);
-                const encLoc = Encryption.encrypt(`${e.latlng.lat},${e.latlng.lng}`, bus.encryptionKey);
+                const encName = window.Encryption.encrypt(name, bus.encryptionKey);
+                const encLoc = window.Encryption.encrypt(`${e.latlng.lat},${e.latlng.lng}`, bus.encryptionKey);
 
                 await addDoc(collection(db, "busStops"), {
                     busId,
@@ -326,18 +326,18 @@
         }
 
         window.copyInvite = (id, key) => {
-            const code = Encryption.generateInviteCode(id, key);
+            const code = window.Encryption.generateInviteCode(id, key);
             navigator.clipboard.writeText(code);
             alert("招待コードをコピーしました");
         };
 
         window.addBus = async () => {
-            const key = Encryption.generateKey();
+            const key = window.Encryption.generateKey();
             await addDoc(collection(db, "buses"), {
                 config: { interval: 30, forceStop: false },
                 metadata: {
-                    encryptedRouteName: Encryption.encrypt("路線A", key),
-                    encryptedVehicleNumber: Encryption.encrypt("001", key)
+                    encryptedRouteName: window.Encryption.encrypt("路線A", key),
+                    encryptedVehicleNumber: window.Encryption.encrypt("001", key)
                 },
                 encryptionKey: key,
                 createdAt: serverTimestamp()
@@ -360,8 +360,8 @@
             busStops.forEach(stop => {
                 const bus = buses.find(b => b.id === stop.busId);
                 if (!bus) return;
-                const name = Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
-                const locStr = Encryption.decrypt(stop.encryptedLocation, bus.encryptionKey);
+                const name = window.Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
+                const locStr = window.Encryption.decrypt(stop.encryptedLocation, bus.encryptionKey);
                 const [lat, lng] = locStr.split(',').map(Number);
 
                 const marker = L.marker([lat, lng]).addTo(map).bindPopup(`
@@ -376,7 +376,7 @@
             // Bus Positions
             buses.forEach(bus => {
                 if (bus.status && bus.status.encryptedLocation) {
-                    const locStr = Encryption.decrypt(bus.status.encryptedLocation, bus.encryptionKey);
+                    const locStr = window.Encryption.decrypt(bus.status.encryptedLocation, bus.encryptionKey);
                     const [lat, lng] = locStr.split(',').map(Number);
                     const marker = L.circleMarker([lat, lng], { color: 'blue', radius: 10 }).addTo(map).bindPopup(`バス: ${bus.id.substring(0,5)}`);
                     markers.push(marker);

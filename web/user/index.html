@@ -55,7 +55,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, collection, query, where, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const app = initializeApp(firebaseConfig);
+        const app = initializeApp(window.firebaseConfig);
         const db = getFirestore(app);
 
         let map, busMarker, stopsMarkers = [];
@@ -68,7 +68,7 @@
             const name = document.getElementById('parent-name').value;
             const cls = document.getElementById('parent-class').value;
 
-            const decoded = Encryption.decodeInviteCode(code);
+            const decoded = window.Encryption.decodeInviteCode(code);
             if (!decoded || !name || !cls) {
                 document.getElementById('error').innerText = "入力内容が正しくありません";
                 document.getElementById('error').classList.remove('hidden');
@@ -78,8 +78,8 @@
             // Save encrypted user info
             await addDoc(collection(db, "users"), {
                 busId: decoded.busId,
-                encryptedName: Encryption.encrypt(name, decoded.key),
-                encryptedClass: Encryption.encrypt(cls, decoded.key),
+                encryptedName: window.Encryption.encrypt(name, decoded.key),
+                encryptedClass: window.Encryption.encrypt(cls, decoded.key),
                 createdAt: serverTimestamp()
             });
 
@@ -119,14 +119,14 @@
             onSnapshot(doc(db, "buses", authData.busId), (doc) => {
                 const data = doc.data();
                 if (data.status && data.status.encryptedLocation) {
-                    const loc = Encryption.decrypt(data.status.encryptedLocation, authData.key);
+                    const loc = window.Encryption.decrypt(data.status.encryptedLocation, authData.key);
                     const [lat, lng] = loc.split(',').map(Number);
                     busMarker.setLatLng([lat, lng]);
                     map.panTo([lat, lng]);
                 }
                 if (data.metadata) {
-                    document.getElementById('route-name').innerText = Encryption.decrypt(data.metadata.encryptedRouteName, authData.key);
-                    document.getElementById('vehicle-num').innerText = "車両番号: " + Encryption.decrypt(data.metadata.encryptedVehicleNumber, authData.key);
+                    document.getElementById('route-name').innerText = window.Encryption.decrypt(data.metadata.encryptedRouteName, authData.key);
+                    document.getElementById('vehicle-num').innerText = "車両番号: " + window.Encryption.decrypt(data.metadata.encryptedVehicleNumber, authData.key);
                 }
             });
 
@@ -136,8 +136,8 @@
                 stopsMarkers.forEach(m => map.removeLayer(m));
                 stopsMarkers = snapshot.docs.map(doc => {
                     const stop = doc.data();
-                    const name = Encryption.decrypt(stop.encryptedName, authData.key);
-                    const loc = Encryption.decrypt(stop.encryptedLocation, authData.key);
+                    const name = window.Encryption.decrypt(stop.encryptedName, authData.key);
+                    const loc = window.Encryption.decrypt(stop.encryptedLocation, authData.key);
                     const [lat, lng] = loc.split(',').map(Number);
                     return L.marker([lat, lng]).addTo(map).bindPopup(name);
                 });
