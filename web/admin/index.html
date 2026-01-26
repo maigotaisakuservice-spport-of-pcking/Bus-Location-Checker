@@ -26,9 +26,9 @@
                 <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">管理者ログイン</h2>
 
                 <div id="mfa-section" class="hidden space-y-4">
-                    <p class="text-sm text-gray-400">SMSで届いた検証コードを入力してください</p>
-                    <input type="text" id="verification-code" class="w-full p-2 bg-gray-700 rounded border border-gray-600" placeholder="123456">
-                    <button onclick="verifyMFA()" class="w-full bg-green-600 py-2 rounded font-bold">ログイン</button>
+                    <p class="text-sm text-gray-400">登録されたメールアドレスに送信された検証コードを入力してください</p>
+                    <input type="text" id="verification-code" class="w-full p-2 bg-gray-700 rounded border border-gray-600 text-center text-2xl tracking-widest" placeholder="000000">
+                    <button onclick="verifyEmailMFA()" class="w-full bg-green-600 py-2 rounded font-bold">認証</button>
                 </div>
 
                 <div id="login-form" class="space-y-4">
@@ -43,10 +43,10 @@
                         <label class="block text-sm text-gray-400 mb-1">セットアップキー</label>
                         <input type="password" id="setup-key" class="w-full p-2 bg-gray-700 rounded border border-gray-600">
                     </div>
-                    <div id="phone-enroll-section" class="hidden">
-                        <label class="block text-sm text-gray-400 mb-1">2段階認証用電話番号 (+81...)</label>
-                        <input type="text" id="phone-number" class="w-full p-2 bg-gray-700 rounded border border-gray-600" placeholder="+819012345678">
-                        <button onclick="sendEnrollmentCode()" class="w-full bg-blue-600 py-2 rounded font-bold mt-2">SMS送信</button>
+                    <div id="email-enroll-section" class="hidden space-y-4">
+                        <label class="block text-sm text-gray-400 mb-1">2段階認証用のメールアドレス</label>
+                        <input type="email" id="mfa-email" class="w-full p-2 bg-gray-700 rounded border border-gray-600" placeholder="admin@example.com">
+                        <button onclick="finalizeRegistration()" class="w-full bg-green-600 py-2 rounded font-bold mt-2">登録を完了する</button>
                     </div>
                     <button id="btn-start-register" onclick="startRegistration()" class="w-full bg-blue-600 py-2 rounded font-bold">Googleで登録を開始</button>
                     <p class="text-center text-sm text-gray-500">
@@ -107,7 +107,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator, RecaptchaVerifier, getMultiFactorResolver } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp(firebaseConfig);
@@ -119,8 +119,7 @@
         let buses = [];
         let busStops = [];
         let map, markers = [];
-        let mfaResolver = null;
-        let verificationId = null;
+        let tempUser = null;
 
         const ADMIN_SETUP_KEY = "BUS_ADMIN_2024_SECRET";
 
@@ -185,33 +184,40 @@
 
         window.loginWithGoogle = async () => {
             try {
-                await signInWithPopup(auth, googleProvider);
-            } catch (err) {
-                if (err.code === 'auth/multi-factor-auth-required') {
-                    mfaResolver = getMultiFactorResolver(auth, err);
-                    document.getElementById('recaptcha-container').innerHTML = '';
-                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
 
-                    const phoneInfoOptions = { multiFactorHint: mfaResolver.hints[0], session: mfaResolver.session };
-                    const phoneAuthProvider = new PhoneAuthProvider(auth);
-                    verificationId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, window.recaptchaVerifier);
+                // Check if admin doc exists
+                const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                if (adminDoc.exists()) {
+                    tempUser = user;
+                    // Prepare MFA Challenge
+                    const code = Math.floor(100000 + Math.random() * 900000).toString();
+                    await updateDoc(doc(db, "admins", user.uid), {
+                        mfaChallenge: code,
+                        mfaChallengeExpires: new Date(Date.now() + 5 * 60000) // 5 mins
+                    });
 
                     document.getElementById('login-form').classList.add('hidden');
                     document.getElementById('mfa-section').classList.remove('hidden');
-                } else {
-                    showError(err.message);
+                    console.log("MFA Code (for testing):", code);
+                    alert("認証コードをメールへ送信しました（シミュレーション: コンソールを確認してください）");
                 }
+            } catch (err) {
+                showError(err.message);
             }
         };
 
-        window.verifyMFA = async () => {
-            const code = document.getElementById('verification-code').value;
-            try {
-                const cred = PhoneAuthProvider.credential(verificationId, code);
-                const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
-                await mfaResolver.resolveSignIn(multiFactorAssertion);
-            } catch (err) {
-                showError("検証コードが正しくありません");
+        window.verifyEmailMFA = async () => {
+            const inputCode = document.getElementById('verification-code').value;
+            const adminDoc = await getDoc(doc(db, "admins", tempUser.uid));
+            const data = adminDoc.data();
+
+            if (data.mfaChallenge === inputCode && new Date() < data.mfaChallengeExpires.toDate()) {
+                currentUser = tempUser;
+                showDashboard();
+            } else {
+                showError("検証コードが正しくないか、有効期限が切れています");
             }
         };
 
@@ -237,30 +243,24 @@
             }
             window.isRegistering = true;
             try {
-                await signInWithPopup(auth, googleProvider);
+                const result = await signInWithPopup(auth, googleProvider);
                 document.getElementById('btn-start-register').classList.add('hidden');
-                document.getElementById('phone-enroll-section').classList.remove('hidden');
-                document.getElementById('recaptcha-container').innerHTML = '';
-                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+                document.getElementById('email-enroll-section').classList.remove('hidden');
             } catch (err) {
                 showError(err.message);
             }
         };
 
-        window.sendEnrollmentCode = async () => {
-            const phone = document.getElementById('phone-number').value;
+        window.finalizeRegistration = async () => {
+            const mfaEmail = document.getElementById('mfa-email').value;
+            if (!mfaEmail.includes('@')) {
+                showError("正しいメールアドレスを入力してください");
+                return;
+            }
             try {
-                const session = await multiFactor(auth.currentUser).getSession();
-                const phoneAuthProvider = new PhoneAuthProvider(auth);
-                verificationId = await phoneAuthProvider.verifyPhoneNumber({ phoneNumber: phone, session }, window.recaptchaVerifier);
-
-                const code = prompt("SMSで届いた6桁のコードを入力してください");
-                const cred = PhoneAuthProvider.credential(verificationId, code);
-                const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
-                await multiFactor(auth.currentUser).enroll(multiFactorAssertion, "管理者用");
-
                 await setDoc(doc(db, "admins", auth.currentUser.uid), {
                     email: auth.currentUser.email,
+                    mfaEmail: mfaEmail,
                     role: 'admin',
                     createdAt: serverTimestamp()
                 });
