@@ -1,13 +1,148 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>user</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バス位置確認 - ユーザー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../shared/utils.js"></script>
+    <style>
+        #map { height: calc(100vh - 80px); }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="app">
+        <!-- Login Section -->
+        <div id="login-section" class="flex items-center justify-center min-h-screen p-4">
+            <div class="max-w-md w-full bg-gray-800 p-8 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-center">バス位置確認 ログイン</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">招待コード</label>
+                        <input type="text" id="invite-code" class="w-full p-2 bg-gray-700 rounded border border-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">保護者名</label>
+                        <input type="text" id="parent-name" class="w-full p-2 bg-gray-700 rounded border border-gray-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">クラス名</label>
+                        <input type="text" id="parent-class" class="w-full p-2 bg-gray-700 rounded border border-gray-600">
+                    </div>
+                    <button onclick="login()" class="w-full bg-blue-600 py-2 rounded font-bold hover:bg-blue-700 transition">ログイン</button>
+                    <p id="error" class="text-red-500 text-sm hidden"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Section -->
+        <div id="map-section" class="hidden">
+            <header class="h-20 p-4 bg-gray-800 flex justify-between items-center shadow-lg">
+                <div>
+                    <h1 id="route-name" class="text-lg font-bold">バスの位置</h1>
+                    <p id="vehicle-num" class="text-xs text-gray-400">読み込み中...</p>
+                </div>
+                <button onclick="logout()" class="text-sm bg-gray-700 px-3 py-1 rounded">ログアウト</button>
+            </header>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, collection, query, where, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let map, busMarker, stopsMarkers = [];
+        let authData = JSON.parse(localStorage.getItem('user_auth'));
+
+        if (authData) showMap();
+
+        window.login = async () => {
+            const code = document.getElementById('invite-code').value;
+            const name = document.getElementById('parent-name').value;
+            const cls = document.getElementById('parent-class').value;
+
+            const decoded = Encryption.decodeInviteCode(code);
+            if (!decoded || !name || !cls) {
+                document.getElementById('error').innerText = "入力内容が正しくありません";
+                document.getElementById('error').classList.remove('hidden');
+                return;
+            }
+
+            // Save encrypted user info
+            await addDoc(collection(db, "users"), {
+                busId: decoded.busId,
+                encryptedName: Encryption.encrypt(name, decoded.key),
+                encryptedClass: Encryption.encrypt(cls, decoded.key),
+                createdAt: serverTimestamp()
+            });
+
+            authData = decoded;
+            localStorage.setItem('user_auth', JSON.stringify(authData));
+            showMap();
+        };
+
+        window.logout = () => {
+            localStorage.removeItem('user_auth');
+            location.reload();
+        };
+
+        function showMap() {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('map-section').classList.remove('hidden');
+            initMap();
+            startTracking();
+        }
+
+        function initMap() {
+            if (map) return;
+            map = L.map('map').setView([35.6812, 139.7671], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            const busIcon = L.divIcon({
+                html: `<div style="background:white;border:2px solid blue;border-radius:50%;padding:4px">🚌</div>`,
+                className: '', iconSize: [30, 30]
+            });
+            busMarker = L.marker([0,0], {icon: busIcon}).addTo(map);
+        }
+
+        function startTracking() {
+            // Bus Location and Metadata
+            onSnapshot(doc(db, "buses", authData.busId), (doc) => {
+                const data = doc.data();
+                if (data.status && data.status.encryptedLocation) {
+                    const loc = Encryption.decrypt(data.status.encryptedLocation, authData.key);
+                    const [lat, lng] = loc.split(',').map(Number);
+                    busMarker.setLatLng([lat, lng]);
+                    map.panTo([lat, lng]);
+                }
+                if (data.metadata) {
+                    document.getElementById('route-name').innerText = Encryption.decrypt(data.metadata.encryptedRouteName, authData.key);
+                    document.getElementById('vehicle-num').innerText = "車両番号: " + Encryption.decrypt(data.metadata.encryptedVehicleNumber, authData.key);
+                }
+            });
+
+            // Bus Stops
+            const q = query(collection(db, "busStops"), where("busId", "==", authData.busId));
+            onSnapshot(q, (snapshot) => {
+                stopsMarkers.forEach(m => map.removeLayer(m));
+                stopsMarkers = snapshot.docs.map(doc => {
+                    const stop = doc.data();
+                    const name = Encryption.decrypt(stop.encryptedName, authData.key);
+                    const loc = Encryption.decrypt(stop.encryptedLocation, authData.key);
+                    const [lat, lng] = loc.split(',').map(Number);
+                    return L.marker([lat, lng]).addTo(map).bindPopup(name);
+                });
+            });
+        }
+    </script>
+</body>
 </html>

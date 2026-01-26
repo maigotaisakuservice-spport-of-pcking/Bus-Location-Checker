@@ -1,13 +1,394 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>admin</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バス位置管理システム - 管理者</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../shared/utils.js"></script>
+    <style>
+        #map { height: 500px; border-radius: 8px; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="app" class="p-4 md:p-8 max-w-6xl mx-auto">
+        <!-- Loading State -->
+        <div id="loading" class="flex items-center justify-center h-screen">
+            <p class="text-xl">読み込み中...</p>
+        </div>
+
+        <!-- Auth Section (Login/Register) -->
+        <div id="auth-section" class="hidden">
+            <div class="max-w-md mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+                <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">管理者ログイン</h2>
+
+                <div id="mfa-section" class="hidden space-y-4">
+                    <p class="text-sm text-gray-400">SMSで届いた検証コードを入力してください</p>
+                    <input type="text" id="verification-code" class="w-full p-2 bg-gray-700 rounded border border-gray-600" placeholder="123456">
+                    <button onclick="verifyMFA()" class="w-full bg-green-600 py-2 rounded font-bold">ログイン</button>
+                </div>
+
+                <div id="login-form" class="space-y-4">
+                    <button onclick="loginWithGoogle()" class="w-full bg-red-600 py-2 rounded font-bold">Googleアカウントでログイン</button>
+                    <p class="text-center text-sm text-gray-500">
+                        アカウントをお持ちでない場合は <a href="javascript:showRegister()" class="text-blue-400">新規登録</a>
+                    </p>
+                </div>
+
+                <div id="register-form" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">セットアップキー</label>
+                        <input type="password" id="setup-key" class="w-full p-2 bg-gray-700 rounded border border-gray-600">
+                    </div>
+                    <div id="phone-enroll-section" class="hidden">
+                        <label class="block text-sm text-gray-400 mb-1">2段階認証用電話番号 (+81...)</label>
+                        <input type="text" id="phone-number" class="w-full p-2 bg-gray-700 rounded border border-gray-600" placeholder="+819012345678">
+                        <button onclick="sendEnrollmentCode()" class="w-full bg-blue-600 py-2 rounded font-bold mt-2">SMS送信</button>
+                    </div>
+                    <button id="btn-start-register" onclick="startRegistration()" class="w-full bg-blue-600 py-2 rounded font-bold">Googleで登録を開始</button>
+                    <p class="text-center text-sm text-gray-500">
+                        <a href="javascript:showLogin()" class="text-blue-400">ログインへ戻る</a>
+                    </p>
+                </div>
+                <div id="recaptcha-container"></div>
+                <p id="auth-error" class="text-red-500 mt-4 text-sm hidden"></p>
+            </div>
+        </div>
+
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="hidden">
+            <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-700">
+                <h1 class="text-2xl font-bold">管理者ダッシュボード</h1>
+                <button onclick="logout()" class="text-gray-400 hover:text-white">ログアウト</button>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Controls -->
+                <div class="space-y-6">
+                    <section class="bg-gray-800 p-6 rounded-lg">
+                        <h2 class="text-xl font-bold mb-4">一斉操作</h2>
+                        <div class="space-y-3">
+                            <button onclick="updateGlobalConfig({forceStop: false})" class="w-full bg-green-600 py-2 rounded">一斉稼働</button>
+                            <button onclick="updateGlobalConfig({forceStop: true})" class="w-full bg-red-600 py-2 rounded">一斉停止</button>
+                            <div class="flex gap-2">
+                                <input type="number" id="global-interval" value="30" class="w-20 p-1 bg-gray-700 rounded text-center">
+                                <button onclick="updateGlobalConfig({interval: parseInt(document.getElementById('global-interval').value)})" class="bg-blue-600 px-4 py-1 rounded text-sm">更新間隔適用</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="bg-gray-800 p-6 rounded-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">バス一覧</h2>
+                            <button onclick="addBus()" class="bg-blue-600 p-1 rounded">+</button>
+                        </div>
+                        <div id="bus-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
+                    </section>
+                </div>
+
+                <!-- Map -->
+                <div class="lg:col-span-2">
+                    <section class="bg-gray-800 p-6 rounded-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-bold">バス停・位置管理</h2>
+                            <select id="selected-bus" class="bg-gray-700 p-1 rounded text-sm"></select>
+                        </div>
+                        <div id="map"></div>
+                        <p class="text-xs text-gray-500 mt-2">地図クリックでバス停を追加 (バスを選択してください)</p>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator, RecaptchaVerifier, getMultiFactorResolver } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        let currentUser = null;
+        let buses = [];
+        let busStops = [];
+        let map, markers = [];
+        let mfaResolver = null;
+        let verificationId = null;
+
+        const ADMIN_SETUP_KEY = "BUS_ADMIN_2024_SECRET";
+
+        // DOM Elements
+        const loadingEl = document.getElementById('loading');
+        const authSection = document.getElementById('auth-section');
+        const dashboardSection = document.getElementById('dashboard-section');
+        const authError = document.getElementById('auth-error');
+
+        // Initializing Map
+        function initMap() {
+            if (map) return;
+            map = L.map('map').setView([35.6812, 139.7671], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            map.on('click', async (e) => {
+                const busId = document.getElementById('selected-bus').value;
+                if (!busId) {
+                    alert("バスを選択してください");
+                    return;
+                }
+                const name = prompt("バス停名を入力してください");
+                if (!name) return;
+
+                const bus = buses.find(b => b.id === busId);
+                const encName = Encryption.encrypt(name, bus.encryptionKey);
+                const encLoc = Encryption.encrypt(`${e.latlng.lat},${e.latlng.lng}`, bus.encryptionKey);
+
+                await addDoc(collection(db, "busStops"), {
+                    busId,
+                    encryptedName: encName,
+                    encryptedLocation: encLoc
+                });
+            });
+        }
+
+        // Auth Logic
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // Check if user is registered admin
+                const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                if (adminDoc.exists()) {
+                    currentUser = user;
+                    showDashboard();
+                } else {
+                    // Not an admin or registration in progress
+                    if (window.isRegistering) {
+                        currentUser = user;
+                    } else {
+                        alert("管理者権限がありません。");
+                        await signOut(auth);
+                        showLogin();
+                    }
+                }
+            } else {
+                showLogin();
+            }
+            loadingEl.classList.add('hidden');
+        });
+
+        window.loginWithGoogle = async () => {
+            try {
+                await signInWithPopup(auth, googleProvider);
+            } catch (err) {
+                if (err.code === 'auth/multi-factor-auth-required') {
+                    mfaResolver = getMultiFactorResolver(auth, err);
+                    document.getElementById('recaptcha-container').innerHTML = '';
+                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+
+                    const phoneInfoOptions = { multiFactorHint: mfaResolver.hints[0], session: mfaResolver.session };
+                    const phoneAuthProvider = new PhoneAuthProvider(auth);
+                    verificationId = await phoneAuthProvider.verifyPhoneNumber(phoneInfoOptions, window.recaptchaVerifier);
+
+                    document.getElementById('login-form').classList.add('hidden');
+                    document.getElementById('mfa-section').classList.remove('hidden');
+                } else {
+                    showError(err.message);
+                }
+            }
+        };
+
+        window.verifyMFA = async () => {
+            const code = document.getElementById('verification-code').value;
+            try {
+                const cred = PhoneAuthProvider.credential(verificationId, code);
+                const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
+                await mfaResolver.resolveSignIn(multiFactorAssertion);
+            } catch (err) {
+                showError("検証コードが正しくありません");
+            }
+        };
+
+        window.showRegister = () => {
+            document.getElementById('auth-title').innerText = "管理者新規登録";
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+        };
+
+        window.showLogin = () => {
+            document.getElementById('auth-title').innerText = "管理者ログイン";
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-form').classList.add('hidden');
+            authSection.classList.remove('hidden');
+            dashboardSection.classList.add('hidden');
+        };
+
+        window.startRegistration = async () => {
+            const key = document.getElementById('setup-key').value;
+            if (key !== ADMIN_SETUP_KEY) {
+                showError("不正なセットアップキーです");
+                return;
+            }
+            window.isRegistering = true;
+            try {
+                await signInWithPopup(auth, googleProvider);
+                document.getElementById('btn-start-register').classList.add('hidden');
+                document.getElementById('phone-enroll-section').classList.remove('hidden');
+                document.getElementById('recaptcha-container').innerHTML = '';
+                window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+            } catch (err) {
+                showError(err.message);
+            }
+        };
+
+        window.sendEnrollmentCode = async () => {
+            const phone = document.getElementById('phone-number').value;
+            try {
+                const session = await multiFactor(auth.currentUser).getSession();
+                const phoneAuthProvider = new PhoneAuthProvider(auth);
+                verificationId = await phoneAuthProvider.verifyPhoneNumber({ phoneNumber: phone, session }, window.recaptchaVerifier);
+
+                const code = prompt("SMSで届いた6桁のコードを入力してください");
+                const cred = PhoneAuthProvider.credential(verificationId, code);
+                const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
+                await multiFactor(auth.currentUser).enroll(multiFactorAssertion, "管理者用");
+
+                await setDoc(doc(db, "admins", auth.currentUser.uid), {
+                    email: auth.currentUser.email,
+                    role: 'admin',
+                    createdAt: serverTimestamp()
+                });
+                alert("登録が完了しました！");
+                location.reload();
+            } catch (err) {
+                showError(err.message);
+            }
+        };
+
+        window.logout = () => signOut(auth);
+
+        function showDashboard() {
+            authSection.classList.add('hidden');
+            dashboardSection.classList.remove('hidden');
+            initMap();
+            loadBuses();
+        }
+
+        function showError(msg) {
+            authError.innerText = msg;
+            authError.classList.remove('hidden');
+        }
+
+        // Dashboard Logic
+        function loadBuses() {
+            onSnapshot(collection(db, "buses"), (snapshot) => {
+                buses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderBusList();
+                updateMapMarkers();
+            });
+            onSnapshot(collection(db, "busStops"), (snapshot) => {
+                busStops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateMapMarkers();
+            });
+        }
+
+        function renderBusList() {
+            const listEl = document.getElementById('bus-list');
+            const selectEl = document.getElementById('selected-bus');
+            listEl.innerHTML = '';
+            const currentSelected = selectEl.value;
+            selectEl.innerHTML = '<option value="">バスを選択</option>';
+
+            buses.forEach(bus => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-700 rounded flex justify-between items-center';
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-sm">ID: ${bus.id.substring(0,8)}</p>
+                        <p class="text-xs text-gray-400">間隔: ${bus.config.interval}秒</p>
+                    </div>
+                    <button onclick="copyInvite('${bus.id}', '${bus.encryptionKey}')" class="text-blue-400 text-xs hover:underline">招待ｺｰﾄﾞ</button>
+                `;
+                listEl.appendChild(div);
+
+                const opt = document.createElement('option');
+                opt.value = bus.id;
+                opt.innerText = `Bus ${bus.id.substring(0,5)}`;
+                selectEl.appendChild(opt);
+            });
+            selectEl.value = currentSelected;
+        }
+
+        window.copyInvite = (id, key) => {
+            const code = Encryption.generateInviteCode(id, key);
+            navigator.clipboard.writeText(code);
+            alert("招待コードをコピーしました");
+        };
+
+        window.addBus = async () => {
+            const key = Encryption.generateKey();
+            await addDoc(collection(db, "buses"), {
+                config: { interval: 30, forceStop: false },
+                metadata: {
+                    encryptedRouteName: Encryption.encrypt("路線A", key),
+                    encryptedVehicleNumber: Encryption.encrypt("001", key)
+                },
+                encryptionKey: key,
+                createdAt: serverTimestamp()
+            });
+        };
+
+        window.updateGlobalConfig = async (update) => {
+            const promises = buses.map(bus => updateDoc(doc(db, "buses", bus.id), {
+                [`config.${Object.keys(update)[0]}`]: Object.values(update)[0]
+            }));
+            await Promise.all(promises);
+            alert("一斉適用しました");
+        };
+
+        function updateMapMarkers() {
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // Bus Stops
+            busStops.forEach(stop => {
+                const bus = buses.find(b => b.id === stop.busId);
+                if (!bus) return;
+                const name = Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
+                const locStr = Encryption.decrypt(stop.encryptedLocation, bus.encryptionKey);
+                const [lat, lng] = locStr.split(',').map(Number);
+
+                const marker = L.marker([lat, lng]).addTo(map).bindPopup(`
+                    <div class="text-black">
+                        <b>${name}</b><br>
+                        <button onclick="deleteStop('${stop.id}')" class="text-red-500 text-xs">削除</button>
+                    </div>
+                `);
+                markers.push(marker);
+            });
+
+            // Bus Positions
+            buses.forEach(bus => {
+                if (bus.status && bus.status.encryptedLocation) {
+                    const locStr = Encryption.decrypt(bus.status.encryptedLocation, bus.encryptionKey);
+                    const [lat, lng] = locStr.split(',').map(Number);
+                    const marker = L.circleMarker([lat, lng], { color: 'blue', radius: 10 }).addTo(map).bindPopup(`バス: ${bus.id.substring(0,5)}`);
+                    markers.push(marker);
+                }
+            });
+        }
+
+        window.deleteStop = async (id) => {
+            if (confirm("削除しますか？")) {
+                await deleteDoc(doc(db, "busStops", id));
+            }
+        };
+    </script>
+</body>
 </html>

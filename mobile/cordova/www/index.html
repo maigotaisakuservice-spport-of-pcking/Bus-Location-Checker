@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バス位置送信アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../../shared/utils.js"></script>
+    <script src="cordova.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div id="app" class="p-8 flex flex-col items-center justify-center min-h-screen">
+        <!-- Configuration State -->
+        <div id="setup-section" class="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-xl">
+            <h2 class="text-xl font-bold mb-4">初期設定</h2>
+            <div class="space-y-4">
+                <input type="text" id="invite-code" class="w-full p-2 bg-gray-700 rounded border border-gray-600" placeholder="招待コードを入力">
+                <button onclick="saveSettings()" class="w-full bg-blue-600 py-2 rounded font-bold">設定を保存</button>
+            </div>
+        </div>
+
+        <!-- Tracking State -->
+        <div id="tracking-section" class="hidden w-full max-w-md text-center space-y-8">
+            <p id="bus-id-display" class="text-xs text-gray-500"></p>
+
+            <div id="status-icon" class="text-6xl text-red-500">
+                🔴
+            </div>
+
+            <h2 id="status-text" class="text-2xl font-bold">停止中</h2>
+            <p id="force-stop-msg" class="text-orange-500 hidden">管理者により強制停止されています</p>
+
+            <button id="toggle-btn" onclick="toggleTracking()" class="w-full h-20 bg-green-600 rounded-full text-2xl font-bold shadow-lg">
+                送信開始
+            </button>
+
+            <div class="flex gap-4 justify-center">
+                <button onclick="openMetadata()" class="text-blue-400 text-sm underline">車両情報設定</button>
+                <button onclick="resetSettings()" class="text-gray-500 text-sm underline">設定リセット</button>
+            </div>
+        </div>
+
+        <!-- Metadata Modal -->
+        <div id="metadata-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4">
+            <div class="bg-gray-800 p-6 rounded-lg w-full max-w-sm">
+                <h3 class="text-lg font-bold mb-4">車両情報</h3>
+                <input type="text" id="route-name" class="w-full p-2 bg-gray-700 rounded mb-4" placeholder="路線名">
+                <input type="text" id="vehicle-num" class="w-full p-2 bg-gray-700 rounded mb-4" placeholder="車両番号">
+                <div class="flex gap-2">
+                    <button onclick="closeMetadata()" class="flex-1 bg-gray-600 py-2 rounded">キャンセル</button>
+                    <button onclick="saveMetadata()" class="flex-1 bg-blue-600 py-2 rounded">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/index.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getFirestore(firebaseApp);
+
+        let isTracking = false;
+        let authData = JSON.parse(localStorage.getItem('bus_auth'));
+        let watchId = null;
+        let config = { interval: 30, forceStop: false };
+
+        if (authData) showTracking();
+
+        window.saveSettings = () => {
+            const code = document.getElementById('invite-code').value;
+            const decoded = Encryption.decodeInviteCode(code);
+            if (!decoded) {
+                alert("無効な招待コードです");
+                return;
+            }
+            authData = decoded;
+            localStorage.setItem('bus_auth', JSON.stringify(authData));
+            showTracking();
+        };
+
+        window.resetSettings = () => {
+            if (confirm("リセットしますか？")) {
+                stopTracking();
+                localStorage.removeItem('bus_auth');
+                location.reload();
+            }
+        };
+
+        function showTracking() {
+            document.getElementById('setup-section').classList.add('hidden');
+            document.getElementById('tracking-section').classList.remove('hidden');
+            document.getElementById('bus-id-display').innerText = "Bus ID: " + authData.busId;
+            listenToConfig();
+        }
+
+        function listenToConfig() {
+            onSnapshot(doc(db, "buses", authData.busId), (doc) => {
+                const data = doc.data();
+                config = data.config;
+                if (config.forceStop && isTracking) {
+                    stopTracking();
+                }
+                document.getElementById('force-stop-msg').classList.toggle('hidden', !config.forceStop);
+                document.getElementById('toggle-btn').disabled = config.forceStop;
+            });
+        }
+
+        window.toggleTracking = () => {
+            if (isTracking) stopTracking();
+            else startTracking();
+        };
+
+        function startTracking() {
+            isTracking = true;
+            document.getElementById('status-text').innerText = "送信中...";
+            document.getElementById('status-icon').innerText = "🟢";
+            document.getElementById('status-icon').classList.replace('text-red-500', 'text-green-500');
+            document.getElementById('toggle-btn').innerText = "送信停止";
+            document.getElementById('toggle-btn').classList.replace('bg-green-600', 'bg-red-600');
+
+            // Set up Cordova Geolocation watch
+            watchId = navigator.geolocation.watchPosition(
+                onLocationUpdate,
+                (err) => console.error(err),
+                { enableHighAccuracy: true, distanceFilter: 5 }
+            );
+
+            // Interval-based reporting
+            window.reportTimer = setInterval(reportLocation, config.interval * 1000);
+        }
+
+        function stopTracking() {
+            isTracking = false;
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (window.reportTimer) clearInterval(window.reportTimer);
+
+            document.getElementById('status-text').innerText = "停止中";
+            document.getElementById('status-icon').innerText = "🔴";
+            document.getElementById('status-icon').classList.replace('text-green-500', 'text-red-500');
+            document.getElementById('toggle-btn').innerText = "送信開始";
+            document.getElementById('toggle-btn').classList.replace('bg-red-600', 'bg-green-600');
+        }
+
+        let lastPosition = null;
+        function onLocationUpdate(pos) {
+            lastPosition = pos;
+        }
+
+        async function reportLocation() {
+            if (!lastPosition || !isTracking) return;
+            const locStr = `${lastPosition.coords.latitude},${lastPosition.coords.longitude}`;
+            const encLoc = Encryption.encrypt(locStr, authData.key);
+
+            await updateDoc(doc(db, "buses", authData.busId), {
+                "status.encryptedLocation": encLoc,
+                "status.updatedAt": serverTimestamp()
+            });
+        }
+
+        window.openMetadata = () => document.getElementById('metadata-modal').classList.remove('hidden');
+        window.closeMetadata = () => document.getElementById('metadata-modal').classList.add('hidden');
+
+        window.saveMetadata = async () => {
+            const route = document.getElementById('route-name').value;
+            const vehicle = document.getElementById('vehicle-num').value;
+            if (!route || !vehicle) return;
+
+            const encRoute = Encryption.encrypt(route, authData.key);
+            const encVehicle = Encryption.encrypt(vehicle, authData.key);
+
+            await updateDoc(doc(db, "buses", authData.busId), {
+                "metadata.encryptedRouteName": encRoute,
+                "metadata.encryptedVehicleNumber": encVehicle
+            });
+            closeMetadata();
+            alert("保存しました");
+        };
+    </script>
+</body>
+</html>
