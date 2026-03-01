@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "busStops",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "busId", "order": "ASCENDING" },
+        { "fieldPath": "encryptedName", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
