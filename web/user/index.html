@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>バス位置確認 - ユーザー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../shared/utils.js"></script>
+    <style>
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        .leaflet-container { font-family: inherit; }
+        
+        .custom-bus-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ff3b30;
+            border: 4px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 59, 48, 0.6);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+        .bus-pulse::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #ff3b30;
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            z-index: -1;
+            top: 0;
+            left: 0;
+        }
+
+        .custom-stop-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 2px solid #007aff;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.5s ease;
+        }
+        .stop-passed {
+            border-color: #94a3b8 !important;
+            background: #f8fafc !important;
+            opacity: 0.6;
+        }
+        .stop-mine {
+            border-color: #f59e0b !important;
+            border-width: 4px !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5) !important;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        #info-panel {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+        }
+        .panel-hidden {
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+            animation: marquee 15s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen overflow-hidden">
+    <div id="emergency-banner" class="hidden fixed top-0 left-0 right-0 z-[2000] bg-red-600 text-white py-3 overflow-hidden">
+        <div class="animate-marquee whitespace-nowrap inline-block px-10 font-black text-sm uppercase tracking-wider" id="emergency-text">---</div>
+    </div>
+    <div id="app">
+        <!-- Login Section -->
+        <div id="login-section" class="flex items-center justify-center min-h-screen p-4 transition-opacity duration-500">
+            <div class="max-w-md w-full bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100">
+                <div class="flex justify-center mb-8">
+                    <div class="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-4xl shadow-inner">🚌</div>
+                </div>
+                <h2 class="text-3xl font-black mb-2 text-center text-slate-800 tracking-tight">バス位置確認</h2>
+                <p class="text-slate-400 text-center mb-10 text-sm font-medium">情報を入力して開始してください</p>
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">招待コード</label>
+                        <input type="text" id="invite-code" class="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-lg font-bold" placeholder="0000:xxxx...">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">保護者名</label>
+                        <input type="text" id="parent-name" class="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-lg font-bold" placeholder="山田 太郎">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">クラス名</label>
+                        <input type="text" id="parent-class" class="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-lg font-bold" placeholder="ひまわり組">
+                    </div>
+                    <button onclick="login()" class="w-full bg-red-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">ログインする</button>
+                    <p id="error" class="text-red-500 text-sm hidden text-center font-bold bg-red-50 p-4 rounded-2xl border border-red-100"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Section -->
+        <div id="map-section" class="hidden opacity-0 transition-opacity duration-700">
+            <header id="info-panel" class="fixed top-6 left-6 right-6 z-[1000] panel-hidden">
+                <div id="bus-selector" class="mb-4 flex flex-wrap gap-2"></div>
+                <div class="glass-panel p-6 rounded-[2rem] shadow-2xl border border-white/50 flex justify-between items-center">
+                    <div>
+                        <h1 id="route-name" class="text-lg font-black text-slate-800 leading-tight">読み込み中...</h1>
+                        <div class="flex items-center mt-1">
+                            <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                            <p id="vehicle-num" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">車両番号 --</p>
+                            <span class="mx-2 text-slate-200">|</span>
+                            <p id="distance-est" class="text-[10px] font-black text-blue-500 uppercase tracking-widest">距離測定中...</p>
+                            <span class="mx-2 text-slate-200">|</span>
+                            <p id="speed-display" class="text-[10px] font-black text-green-500 uppercase tracking-widest">--- km/h</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleInfo()" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">✕</button>
+                </div>
+            </header>
+
+            <!-- Floating Action Buttons -->
+            <div class="fixed bottom-10 right-6 z-[1000] space-y-4">
+                <button id="btn-follow" onclick="toggleAutoFollow()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-red-100 flex items-center justify-center text-red-500 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                    </svg>
+                </button>
+                <button onclick="centerOnBus()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex items-center justify-center text-slate-400 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <button onclick="logout()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex items-center justify-center text-slate-300 hover:text-red-400 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+
+            <div id="map"></div>
+
+            <!-- Legend and Status -->
+            <div class="fixed bottom-32 left-6 z-[1000] space-y-2 pointer-events-none">
+                <div class="glass-panel px-4 py-2 rounded-xl shadow-lg border border-white/50 text-[10px] font-black uppercase tracking-widest flex items-center space-x-3 pointer-events-auto">
+                    <div class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-1.5"></span> 走行予定</div>
+                    <div class="flex items-center"><span class="w-2 h-2 bg-slate-400 rounded-full mr-1.5"></span> 通過済み</div>
+                    <div class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-1.5"></span> 自分のバス停</div>
+                </div>
+                <div id="status-badge" class="hidden glass-panel px-4 py-2 rounded-xl shadow-lg border border-red-100 text-[10px] font-black uppercase tracking-widest text-red-500 flex items-center space-x-2 pointer-events-auto">
+                    <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                    <span>時間外 / 停止中</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, where, addDoc, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
+        const app = initializeApp(window.firebaseConfig);
+        const db = getFirestore(app);
+
+        let map, busMarker, stopsMarkers = [], routePolyline, passedPolyline;
+        let currentBusPos = null;
+        let isAutoFollow = true;
+        let pc = null;
+        let myStopId = localStorage.getItem('my_stop_id');
+
+        window.allAuths = JSON.parse(localStorage.getItem('user_auths')) || [];
+        window.authData = window.allAuths[0];
+
+        window.login = async () => {
+            const code = document.getElementById('invite-code').value.trim();
+            const name = document.getElementById('parent-name').value.trim();
+            const cls = document.getElementById('parent-class').value.trim();
+
+            const decoded = window.Encryption.decodeInviteCode(code);
+            if (!decoded || !name || !cls) {
+                const errEl = document.getElementById('error');
+                errEl.innerText = "入力内容が正しくありません";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "users"), {
+                    busId: decoded.busId,
+                    encryptedName: window.Encryption.encrypt(name, decoded.key),
+                    encryptedClass: window.Encryption.encrypt(cls, decoded.key),
+                    createdAt: serverTimestamp(),
+                    regYear: "2024"
+                });
+
+                window.allAuths.push(decoded);
+                localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+                window.authData = decoded;
+                window.showMap();
+            } catch (e) {
+                console.error("Login error:", e);
+                document.getElementById('error').innerText = "ログインに失敗しました";
+                document.getElementById('error').classList.remove('hidden');
+            }
+        };
+
+        window.logout = () => {
+            if (confirm("ログアウトしますか？")) {
+                localStorage.removeItem('user_auths');
+                localStorage.removeItem('my_stop_id');
+                location.reload();
+            }
+        };
+
+        window.showMap = async () => {
+            if (window.allAuths.length > 1) {
+                const sel = document.getElementById('bus-selector');
+                sel.innerHTML = '';
+                for (let i=0; i<window.allAuths.length; i++) {
+                    const authObj = window.allAuths[i];
+                    const btn = document.createElement('button');
+                    btn.className = `px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md flex items-center space-x-2 ${i === 0 ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 border border-slate-100'}`;
+                    
+                    // Fetch route name for button
+                    const bDoc = await getDoc(doc(db, "buses", authObj.busId));
+                    const bName = bDoc.exists() ? window.Encryption.decrypt(bDoc.data().metadata.encryptedRouteName, authObj.key) : `バス ${i+1}`;
+                    
+                    btn.innerHTML = `<span>🚌</span> <span>${bName}</span>`;
+                    btn.onclick = () => window.switchBus(i);
+                    sel.appendChild(btn);
+                }
+            }
+
+            const auth = getAuth(app);
+            try {
+                if (!auth.currentUser) await signInAnonymously(auth);
+                requestNotificationPermission();
+            } catch (e) {
+                console.error("Auth failed", e);
+            }
+
+            const loginSec = document.getElementById('login-section');
+            const mapSec = document.getElementById('map-section');
+            
+            loginSec.classList.add('opacity-0');
+            setTimeout(() => {
+                loginSec.classList.add('hidden');
+                mapSec.classList.remove('hidden');
+                setTimeout(() => mapSec.classList.remove('opacity-0'), 50);
+                initMap();
+                startTracking();
+                initWebRTC();
+            }, 500);
+        };
+
+        window.toggleInfo = () => {
+            document.getElementById('info-panel').classList.toggle('panel-hidden');
+        };
+
+        function initMap() {
+            if (map) return;
+            window.map = map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([35.6812, 139.7671], 15);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            const busIcon = L.divIcon({
+                html: `<div class="custom-bus-icon bus-pulse text-3xl"><span>🚌</span></div>`,
+                className: '',
+                iconSize: [64, 64],
+                iconAnchor: [32, 32]
+            });
+            busMarker = L.marker([0,0], {icon: busIcon, zIndexOffset: 1000}).addTo(map);
+            
+            busMarker.on('click', () => {
+                document.getElementById('info-panel').classList.remove('panel-hidden');
+            });
+
+            const btn = document.getElementById('btn-follow');
+            btn.classList.add('border-red-100', 'text-red-500');
+        }
+
+        async function requestNotificationPermission() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const messaging = getMessaging(app);
+                    /**
+                     * NOTE: Replace 'YOUR_PUBLIC_VAPID_KEY' with the key from 
+                     * Firebase Console > Project Settings > Cloud Messaging > Web configuration
+                     */
+                    const token = await getToken(messaging, { vapidKey: 'B...' });
+                    if (token) {
+                        await setDoc(doc(db, "fcmTokens", token), {
+                            uid: getAuth(app).currentUser.uid,
+                            busId: window.authData.busId,
+                            updatedAt: serverTimestamp()
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("FCM failed", e);
+            }
+        }
+
+        async function initWebRTC() {
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            let signalingId = null;
+            const pendingCandidates = [];
+            
+            const dc = pc.createDataChannel("location");
+            dc.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                updateBusLocation(data.location, null);
+            };
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    if (signalingId) {
+                        addDoc(collection(db, "signaling"), {
+                            busId: window.authData.busId,
+                            targetId: signalingId,
+                            type: 'candidate',
+                            candidate: e.candidate.toJSON(),
+                            from: 'user'
+                        });
+                    } else {
+                        pendingCandidates.push(e.candidate.toJSON());
+                    }
+                }
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            const signalingRef = await addDoc(collection(db, "signaling"), {
+                busId: window.authData.busId,
+                offer: { type: offer.type, sdp: offer.sdp },
+                status: 'new',
+                createdAt: serverTimestamp()
+            });
+            signalingId = signalingRef.id;
+
+            for (const cand of pendingCandidates) {
+                addDoc(collection(db, "signaling"), {
+                    busId: window.authData.busId,
+                    targetId: signalingId,
+                    type: 'candidate',
+                    candidate: cand,
+                    from: 'user'
+                });
+            }
+
+            onSnapshot(doc(db, "signaling", signalingId), async (snap) => {
+                const data = snap.data();
+                if (data.answer && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+            });
+
+            onSnapshot(query(collection(db, "signaling"), where("targetId", "==", signalingId), where("from", "==", "bus")), (snap) => {
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        pc.addIceCandidate(new RTCIceCandidate(change.doc.data().candidate));
+                    }
+                });
+            });
+        }
+
+        window.toggleAutoFollow = () => {
+            isAutoFollow = !isAutoFollow;
+            const btn = document.getElementById('btn-follow');
+            if (isAutoFollow) {
+                btn.classList.add('border-red-100', 'text-red-500');
+                btn.classList.remove('text-slate-400');
+                if (currentBusPos) map.panTo(currentBusPos);
+            } else {
+                btn.classList.remove('border-red-100', 'text-red-500');
+                btn.classList.add('text-slate-400');
+            }
+        };
+
+        window.centerOnBus = () => {
+            if (currentBusPos) {
+                map.flyTo(currentBusPos, 16, { animate: true, duration: 1.5 });
+                if (!isAutoFollow) toggleAutoFollow();
+            }
+        };
+
+        let masterRoutePoints = [];
+
+        window.setMyStop = (id) => {
+            myStopId = id;
+            localStorage.setItem('my_stop_id', id);
+            alert("自分のバス停を設定しました");
+            map.closePopup();
+            updateRouteStyles();
+        };
+
+        function updateRouteStyles() {
+            if (masterRoutePoints.length === 0 || !currentBusPos) return;
+            if (passedPolyline) map.removeLayer(passedPolyline);
+            if (routePolyline) map.removeLayer(routePolyline);
+
+            const allPoints = masterRoutePoints;
+            let closestIdx = 0;
+            let minDist = Infinity;
+
+            allPoints.forEach((p, i) => {
+                const d = map.distance(p, currentBusPos);
+                if (d < minDist) {
+                    minDist = d;
+                    closestIdx = i;
+                }
+            });
+
+            const passedPoints = allPoints.slice(0, closestIdx + 1);
+            const upcomingPoints = allPoints.slice(closestIdx);
+
+            passedPolyline = L.polyline(passedPoints, {color: '#94a3b8', weight: 6, opacity: 0.5}).addTo(map);
+            routePolyline = L.polyline(upcomingPoints, {color: '#8b5cf6', weight: 6, opacity: 0.7}).addTo(map);
+
+            stopsMarkers.forEach((m, i) => {
+                const el = m.getElement();
+                if (el) {
+                    const iconDiv = el.querySelector('.custom-stop-icon');
+                    iconDiv.classList.toggle('stop-passed', i <= closestIdx);
+                    iconDiv.classList.toggle('stop-mine', m.stopId === myStopId);
+                }
+            });
+        }
+
+        function updateBusLocation(encLoc, lastUpdate) {
+            const decrypted = window.Encryption.decrypt(encLoc, window.authData.key);
+            const [coords, speed] = decrypted.split(':');
+            const [lat, lng] = coords.split(',').map(Number);
+            
+            if (speed !== undefined) {
+                document.getElementById('speed-display').innerText = `${speed} km/h`;
+            }
+
+            const newPos = new L.LatLng(lat, lng);
+
+            if (myStopId) {
+                const stopMarker = stopsMarkers.find(m => m.stopId === myStopId);
+                if (stopMarker) {
+                    const dist = map.distance(newPos, stopMarker.getLatLng());
+                    const mins = Math.ceil((dist / 1000) / 20 * 60); // 20km/h avg
+                    document.getElementById('distance-est').innerText = `${(dist/1000).toFixed(1)}km (約${mins}分)`;
+                }
+            }
+
+            if (lastUpdate) {
+                const diff = (Date.now() - lastUpdate.toMillis()) / 1000;
+                const badge = document.getElementById('status-badge');
+                if (diff > 300) {
+                    badge.classList.remove('hidden');
+                    if (routePolyline) routePolyline.setStyle({opacity: 0.1});
+                    if (passedPolyline) passedPolyline.setStyle({opacity: 0.1});
+                } else {
+                    badge.classList.add('hidden');
+                    if (routePolyline) routePolyline.setStyle({opacity: 0.7});
+                    if (passedPolyline) passedPolyline.setStyle({opacity: 0.5});
+                }
+            }
+
+            currentBusPos = newPos;
+            busMarker.setLatLng(currentBusPos);
+            if (isAutoFollow) map.panTo(currentBusPos);
+            updateRouteStyles();
+        }
+
+        function startTracking() {
+            if (!window.authData) return;
+
+            onSnapshot(doc(db, "config", "broadcast"), (snap) => {
+                const data = snap.data();
+                const banner = document.getElementById('emergency-banner');
+                if (data && data.message) {
+                    document.getElementById('emergency-text').innerText = data.message;
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            });
+
+            onSnapshot(doc(db, "buses", window.authData.busId), (doc) => {
+                const data = doc.data();
+                if (!data) return;
+                if (data.status && data.status.encryptedLocation) {
+                    updateBusLocation(data.status.encryptedLocation, data.status.lastUpdated);
+                }
+                if (data.metadata) {
+                    document.getElementById('route-name').innerText = window.Encryption.decrypt(data.metadata.encryptedRouteName, window.authData.key);
+                    document.getElementById('vehicle-num').innerText = "車両番号: " + window.Encryption.decrypt(data.metadata.encryptedVehicleNumber, window.authData.key);
+                }
+            });
+
+            const stopIcon = L.divIcon({
+                html: `<div class="custom-stop-icon text-sm">🚏</div>`,
+                className: '',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const q = query(collection(db, "busStops"), where("busId", "==", window.authData.busId));
+            onSnapshot(q, (snapshot) => {
+                stopsMarkers.forEach(m => map.removeLayer(m));
+                const sortedStops = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                masterRoutePoints = sortedStops.map(stop => {
+                    const loc = window.Encryption.decrypt(stop.encryptedLocation, window.authData.key);
+                    return loc.split(',').map(Number);
+                });
+
+                updateRouteStyles();
+
+                stopsMarkers = sortedStops.map((stop, idx) => {
+                    const name = window.Encryption.decrypt(stop.encryptedName, window.authData.key);
+                    const loc = window.Encryption.decrypt(stop.encryptedLocation, window.authData.key);
+                    const [lat, lng] = loc.split(',').map(Number);
+                    const m = L.marker([lat, lng], {icon: stopIcon}).addTo(map).bindPopup(`
+                        <div class="p-4 flex flex-col items-center space-y-3">
+                            <div class="font-black text-slate-800 text-center">${name}</div>
+                            <button onclick="setMyStop('${stop.id}')" class="px-4 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl shadow-lg shadow-blue-200">ここを自分のバス停にする</button>
+                        </div>
+                    `);
+                    m.stopIdx = idx;
+                    m.stopId = stop.id;
+                    return m;
+                });
+            });
+        }
+
+        window.switchBus = (idx) => {
+            window.allAuths.splice(0, 0, window.allAuths.splice(idx, 1)[0]);
+            localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+            location.reload();
+        };
+
+        if (window.authData) window.showMap();
+    </script>
+</body>
+</html>

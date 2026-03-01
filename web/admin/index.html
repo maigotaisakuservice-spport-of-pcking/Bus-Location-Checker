@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理者パネル - バス位置管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../shared/utils.js"></script>
+    <style>
+        #map { height: 400px; border-radius: 1.5rem; z-index: 10; }
+        .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @media (max-width: 768px) {
+            .sidebar-hidden { transform: translateX(-100%); }
+        }
+        .nav-btn.active-nav { background-color: #1e293b; border-left: 4px solid #3b82f6; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen overflow-x-hidden font-sans">
+    <div id="app" class="flex min-h-screen">
+        
+        <!-- Sidebar / Navigation -->
+        <aside id="sidebar" class="sidebar-transition sidebar-hidden md:transform-none fixed md:relative z-50 w-72 bg-slate-900 text-white min-h-screen flex flex-col shadow-2xl">
+            <div class="p-8">
+                <div class="flex items-center justify-between mb-10">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-500/30">🚌</div>
+                        <span class="text-xl font-black tracking-tighter">BUS ADMIN</span>
+                    </div>
+                    <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <nav class="space-y-2">
+                    <button onclick="switchView('dashboard')" class="w-full flex items-center space-x-4 p-4 rounded-2xl hover:bg-slate-800 transition nav-btn active-nav" data-view="dashboard">
+                        <span class="text-xl">📊</span> <span class="font-bold">ダッシュボード</span>
+                    </button>
+                    <button onclick="switchView('users')" class="w-full flex items-center space-x-4 p-4 rounded-2xl hover:bg-slate-800 transition nav-btn" data-view="users">
+                        <span class="text-xl">👥</span> <span class="font-bold">ユーザー管理</span>
+                    </button>
+                    <button onclick="switchView('bus-stops')" class="w-full flex items-center space-x-4 p-4 rounded-2xl hover:bg-slate-800 transition nav-btn" data-view="bus-stops">
+                        <span class="text-xl">🚏</span> <span class="font-bold">バス停・ルート</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="mt-auto p-8">
+                <button onclick="logout()" class="w-full flex items-center justify-center space-x-3 p-4 bg-slate-800 rounded-2xl hover:bg-red-600 transition group">
+                    <span class="group-hover:rotate-12 transition-transform">🚪</span> 
+                    <span class="font-bold">ログアウト</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col min-w-0">
+            <!-- Header -->
+            <header class="bg-white/80 backdrop-blur-md border-b p-4 md:p-6 flex items-center justify-between sticky top-0 z-40">
+                <div class="flex items-center">
+                    <button onclick="toggleSidebar()" class="md:hidden p-3 bg-slate-100 rounded-xl mr-4 hover:bg-slate-200 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <h1 id="view-title" class="text-xl md:text-2xl font-black text-slate-800">ダッシュボード</h1>
+                </div>
+                <div id="admin-info-container" class="flex items-center space-x-4">
+                    <div class="hidden md:block text-right">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">管理者アカウント</p>
+                        <p class="text-sm font-bold text-slate-600" id="admin-email">---</p>
+                    </div>
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-200">A</div>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <div id="views" class="p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
+                
+                <!-- Dashboard View -->
+                <section id="view-dashboard" class="space-y-8 animate-fade-in">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 group hover:border-blue-500 transition-colors">
+                            <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-3">運行中のバス</p>
+                            <div class="flex items-end space-x-2">
+                                <p class="text-5xl font-black leading-none" id="active-bus-count">0</p>
+                                <span class="text-slate-400 font-bold mb-1">台</span>
+                            </div>
+                        </div>
+                        <div class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 group hover:border-blue-500 transition-colors">
+                            <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-3">全登録ユーザー数</p>
+                            <div class="flex items-end space-x-2">
+                                <p class="text-5xl font-black leading-none" id="total-user-count">0</p>
+                                <span class="text-slate-400 font-bold mb-1">名</span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200">
+                            <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-3">一斉連絡・緊急テロップ</p>
+                            <div class="flex space-x-3">
+                                <input type="text" id="emergency-msg-input" class="flex-1 bg-slate-50 p-4 rounded-2xl border outline-none" placeholder="例：雪のため15分遅延しています">
+                                <button onclick="broadcastMessage()" class="bg-red-500 text-white px-6 rounded-2xl font-bold">配信</button>
+                                <button onclick="clearMessage()" class="bg-slate-100 text-slate-400 px-4 rounded-2xl font-bold text-xs">消去</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-center mb-8">
+                            <div>
+                                <h2 class="text-2xl font-black text-slate-800">バス一覧</h2>
+                                <p class="text-slate-400 text-sm font-medium">現在管理されている全路線のリストです</p>
+                            </div>
+                            <button onclick="addBus()" class="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center space-x-2">
+                                <span>＋</span><span>新規路線を追加</span>
+                            </button>
+                        </div>
+                        <div id="bus-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <!-- Bus Cards will be injected here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Users View -->
+                <section id="view-users" class="hidden space-y-8 animate-fade-in">
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                            <div>
+                                <h2 class="text-2xl font-black text-slate-800">ユーザー管理</h2>
+                                <p class="text-slate-400 text-sm font-medium">登録されている保護者の管理と年度末の一括整理</p>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <select id="year-filter" class="bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-blue-500 transition" onchange="renderUsers()">
+                                    <option value="all">全年度を表示</option>
+                                    <option value="2025">2025年度</option>
+                                    <option value="2024">2024年度</option>
+                                    <option value="2023">2023年度</option>
+                                </select>
+                                <button onclick="bulkDeleteUsers()" class="bg-red-50 text-red-600 px-6 py-4 rounded-2xl font-bold text-sm hover:bg-red-100 transition flex items-center space-x-2">
+                                    <span>🗑️</span><span>選択中を削除</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto -mx-8">
+                            <table class="w-full text-left min-w-[600px]">
+                                <thead class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50">
+                                    <tr>
+                                        <th class="p-6 w-16 text-center">
+                                            <input type="checkbox" id="select-all-users" onclick="toggleSelectAll()" class="w-5 h-5 rounded-lg border-slate-300 text-blue-600 focus:ring-blue-500">
+                                        </th>
+                                        <th class="p-6 w-24">年度</th>
+                                        <th class="p-6">保護者名</th>
+                                        <th class="p-6">利用路線</th>
+                                        <th class="p-6 text-right">アクション</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="user-table-body" class="divide-y text-sm">
+                                    <!-- User rows will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bus Stops View -->
+                <section id="view-bus-stops" class="hidden space-y-8 animate-fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <div>
+                                    <h2 class="text-2xl font-black text-slate-800">バス停エディタ</h2>
+                                    <p class="text-slate-400 text-sm font-medium">地図をクリックしてバス停を配置します</p>
+                                </div>
+                                <select id="editor-bus-select" class="w-full sm:w-auto bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-blue-500 transition" onchange="refreshMap()">
+                                    <option value="">バスを選択してください</option>
+                                </select>
+                            </div>
+                            <div id="map" class="shadow-inner border border-slate-100"></div>
+                            <div class="mt-6 flex flex-wrap gap-4 text-xs font-bold text-slate-400">
+                                <div class="flex items-center"><span class="w-3 h-3 bg-blue-600 rounded-full mr-2"></span> 設置済みバス停</div>
+                                <div class="flex items-center"><span class="w-3 h-3 bg-indigo-500 rounded-full mr-2"></span> 運行ルート予測線</div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200 flex flex-col">
+                            <h2 class="text-xl font-black mb-6 text-slate-800">停留所リスト</h2>
+                            <div id="bus-stops-list" class="space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-2 custom-scrollbar">
+                                <div class="text-center py-10 text-slate-300 font-bold">バスを選択してください</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="auth-modal" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
+            
+            <h2 id="auth-title" class="text-3xl font-black mb-2 text-center text-slate-800">管理者認証</h2>
+            <p class="text-slate-500 text-center mb-10 text-sm font-medium">運行管理システムへのアクセスを許可してください</p>
+            
+            <div id="login-form" class="space-y-6">
+                <button onclick="loginWithGoogle()" class="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-bold flex items-center justify-center space-x-4 hover:bg-slate-800 transition active:scale-95 shadow-xl">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
+                    <span>Googleアカウントでログイン</span>
+                </button>
+                <div class="relative py-4">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-100"></div></div>
+                    <div class="relative flex justify-center text-xs uppercase font-black text-slate-300 bg-white px-4">OR</div>
+                </div>
+                <p class="text-center text-xs text-slate-400 font-bold">
+                    新規管理者の登録制限については<a href="javascript:showRegister()" class="text-blue-600 hover:underline">こちら</a>
+                </p>
+            </div>
+
+            <div id="register-form" class="hidden space-y-6">
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    セキュリティ保護のため、ブラウザからの新規管理者登録は制限されています。<br><br>
+                    最初の管理者を登録するには、Firebaseコンソールの <b>Firestore > admins</b> コレクションに、自身の <b>UID</b> をドキュメントIDとして作成し、<code>role: "admin"</code> を設定してください。
+                </p>
+                <button onclick="location.reload()" class="w-full bg-slate-100 py-4 rounded-2xl font-bold">ログイン画面に戻る</button>
+            </div>
+            
+            <p id="auth-error" class="text-red-500 mt-8 text-xs font-bold hidden bg-red-50 p-4 rounded-2xl border border-red-100 text-center"></p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        /**
+         * IMPORTANT: This application uses the firebaseConfig defined in ../shared/utils.js
+         */
+        const app = initializeApp(window.firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        let currentUser = null;
+        let buses = [];
+        let busStops = [];
+        let users = [];
+        let map, markers = [];
+
+        /**
+         * NOTE: Replace this with your deployed Google Apps Script Web App URL.
+         * The script source can be found in /gas/user-management.gs
+         */
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/.../exec"; 
+
+        // Global functions
+        window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('sidebar-hidden');
+        
+        window.switchView = (viewId) => {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
+            document.querySelector(`[data-view="${viewId}"]`).classList.add('active-nav');
+            
+            document.getElementById('view-title').innerText = document.querySelector(`[data-view="${viewId}"] span:last-child`).innerText;
+            
+            if (viewId === 'bus-stops' && !map) initMap();
+            if (window.innerWidth < 768) toggleSidebar();
+        };
+
+        window.loginWithGoogle = async () => {
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
+                const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                if (adminDoc.exists()) {
+                    location.reload();
+                } else {
+                    showError("管理者権限がありません。UID: " + user.uid + " をFirestoreに登録してください。");
+                    await signOut(auth);
+                }
+            } catch (err) {
+                showError(err.message);
+            }
+        };
+
+        window.showRegister = () => {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+        };
+
+        window.logout = () => signOut(auth).then(() => location.reload());
+
+        function showError(msg) {
+            const errEl = document.getElementById('auth-error');
+            errEl.innerText = msg;
+            errEl.classList.remove('hidden');
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                if (adminDoc.exists()) {
+                    currentUser = user;
+                    document.getElementById('auth-modal').classList.add('hidden');
+                    document.getElementById('admin-email').innerText = user.email;
+                    loadData();
+                } else {
+                    document.getElementById('auth-modal').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById('auth-modal').classList.remove('hidden');
+            }
+        });
+
+        function loadData() {
+            onSnapshot(collection(db, "buses"), (snapshot) => {
+                buses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderBuses();
+                updateStats();
+            });
+
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderUsers();
+                updateStats();
+            });
+
+            onSnapshot(collection(db, "busStops"), (snapshot) => {
+                busStops = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (map) {
+                    updateMapMarkers();
+                    renderStopsList();
+                }
+            });
+        }
+
+        function updateStats() {
+            document.getElementById('active-bus-count').innerText = buses.filter(b => !b.config?.forceStop).length;
+            document.getElementById('total-user-count').innerText = users.length;
+        }
+
+        function renderBuses() {
+            const grid = document.getElementById('bus-list-grid');
+            const select = document.getElementById('editor-bus-select');
+            const currentSelected = select.value;
+            
+            grid.innerHTML = '';
+            select.innerHTML = '<option value="">バスを選択してください</option>';
+            
+            buses.forEach(bus => {
+                const name = bus.metadata ? window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey) : "未設定";
+                const vnum = bus.metadata ? window.Encryption.decrypt(bus.metadata.encryptedVehicleNumber, bus.encryptionKey) : "---";
+                
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 p-6 rounded-[2rem] border border-slate-100 flex flex-col justify-between hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300";
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-1 rounded-full tracking-wider">ID: ${bus.id.substring(0,6)}</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase">${bus.config?.forceStop ? '停止中' : '稼働中'}</span>
+                                <div class="w-3 h-3 rounded-full ${bus.config?.forceStop ? 'bg-slate-300' : 'bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]'}"></div>
+                            </div>
+                        </div>
+                        <h3 class="font-black text-xl text-slate-800 truncate mb-1">${name}</h3>
+                        <p class="text-xs text-slate-400 font-bold tracking-widest uppercase mb-6">${vnum}</p>
+                    </div>
+                    <div class="flex gap-3 pt-4 border-t border-slate-200/60">
+                        <button onclick="editBus('${bus.id}')" class="flex-1 text-xs font-black py-3 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition active:scale-95">詳細設定</button>
+                        <button onclick="copyInvite('${bus.id}', '${bus.encryptionKey}')" class="flex-1 text-xs font-black py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition active:scale-95 shadow-lg shadow-blue-200">招待用コード</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+
+                const opt = document.createElement('option');
+                opt.value = bus.id;
+                opt.innerText = name;
+                if (bus.id === currentSelected) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        window.renderUsers = () => {
+            const tbody = document.getElementById('user-table-body');
+            const filter = document.getElementById('year-filter').value;
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const year = user.regYear || "2024";
+                if (filter !== 'all' && year !== filter) return;
+
+                const bus = buses.find(b => b.id === user.busId);
+                const busName = bus ? window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey) : "削除済み路線";
+                const parentName = bus ? window.Encryption.decrypt(user.encryptedName, bus.encryptionKey) : "解読不能データ";
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors group";
+                tr.innerHTML = `
+                    <td class="p-6 text-center">
+                        <input type="checkbox" class="user-checkbox w-5 h-5 rounded-lg border-slate-300 text-blue-600" data-id="${user.id}">
+                    </td>
+                    <td class="p-6 font-black text-slate-400 text-xs">${year}年</td>
+                    <td class="p-6">
+                        <p class="font-black text-slate-800">${parentName}</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">ID: ${user.id.substring(0,8)}</p>
+                    </td>
+                    <td class="p-6">
+                        <span class="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-600">${busName}</span>
+                    </td>
+                    <td class="p-6 text-right">
+                        <button onclick="deleteUser('${user.id}')" class="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition group-hover:shadow-lg group-hover:shadow-red-200 mx-auto mr-0">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function initMap() {
+            map = L.map('map', { zoomControl: false }).setView([35.6812, 139.7671], 13);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            map.on('click', async (e) => {
+                const busId = document.getElementById('editor-bus-select').value;
+                if (!busId) return alert("まず編集対象のバスを選択してください");
+                const name = prompt("バス停の名称を入力してください");
+                if (!name) return;
+                
+                const bus = buses.find(b => b.id === busId);
+                const encName = window.Encryption.encrypt(name, bus.encryptionKey);
+                const encLoc = window.Encryption.encrypt(`${e.latlng.lat},${e.latlng.lng}`, bus.encryptionKey);
+                
+                await addDoc(collection(db, "busStops"), { busId, encryptedName: encName, encryptedLocation: encLoc, order: busStops.length });
+            });
+        }
+
+        window.toggleSelectAll = () => {
+            const checked = document.getElementById('select-all-users').checked;
+            document.querySelectorAll('.user-checkbox').forEach(c => c.checked = checked);
+        };
+
+        window.deleteUser = async (id) => {
+            if (confirm("このユーザーの利用情報を削除しますか？ (Authも削除されます)")) {
+                await callGASDelete([id]);
+                await deleteDoc(doc(db, "users", id));
+                alert("削除しました");
+            }
+        };
+
+        window.bulkDeleteUsers = async () => {
+            const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(c => c.dataset.id);
+            if (ids.length === 0) return alert("一括削除するユーザーをチェックしてください");
+            if (confirm(`${ids.length}名のユーザーデータを削除します。Authアカウントも同時に削除されますがよろしいですか？`)) {
+                await callGASDelete(ids);
+                for (const id of ids) await deleteDoc(doc(db, "users", id));
+                alert("一括削除が完了しました");
+            }
+        };
+
+        async function callGASDelete(uids) {
+            try {
+                await fetch(GAS_WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'deleteUsers', uids })
+                });
+            } catch (e) {
+                console.error("GAS call failed", e);
+            }
+        }
+
+        window.broadcastMessage = async () => {
+            const msg = document.getElementById('emergency-msg-input').value.trim();
+            if (!msg) return;
+            await setDoc(doc(db, "config", "broadcast"), { message: msg, updatedAt: serverTimestamp() });
+            alert("メッセージを配信しました");
+        };
+
+        window.clearMessage = async () => {
+            await setDoc(doc(db, "config", "broadcast"), { message: "", updatedAt: serverTimestamp() });
+            document.getElementById('emergency-msg-input').value = "";
+            alert("メッセージを消去しました");
+        };
+
+        window.addBus = async () => {
+            const name = prompt("路線の名称を入力（例：青ルート）");
+            const vnum = prompt("車両番号を入力（例：世田谷 200 あ 12-34）");
+            if (!name || !vnum) return;
+            const key = window.Encryption.generateKey();
+            await addDoc(collection(db, "buses"), {
+                config: { interval: 10, forceStop: false },
+                metadata: {
+                    encryptedRouteName: window.Encryption.encrypt(name, key),
+                    encryptedVehicleNumber: window.Encryption.encrypt(vnum, key)
+                },
+                encryptionKey: key,
+                createdAt: serverTimestamp()
+            });
+        };
+
+        window.editBus = async (id) => {
+            const bus = buses.find(b => b.id === id);
+            const name = prompt("路線の名称を変更", window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey));
+            if (!name) return;
+            await updateDoc(doc(db, "buses", id), {
+                "metadata.encryptedRouteName": window.Encryption.encrypt(name, bus.encryptionKey)
+            });
+        };
+
+        window.copyInvite = (id, key) => {
+            const code = window.Encryption.generateInviteCode(id, key);
+            navigator.clipboard.writeText(code);
+            alert("招待コードをクリップボードにコピーしました。保護者に配布してください。");
+        };
+
+        function updateMapMarkers() {
+            if (!map) return;
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+            
+            const busId = document.getElementById('editor-bus-select').value;
+            const stops = busStops.filter(s => s.busId === busId);
+            
+            if (stops.length > 0) {
+                const bounds = L.latLngBounds([]);
+                stops.forEach(stop => {
+                    const bus = buses.find(b => b.id === stop.busId);
+                    const name = window.Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
+                    const [lat, lng] = window.Encryption.decrypt(stop.encryptedLocation, bus.encryptionKey).split(',').map(Number);
+                    const m = L.marker([lat, lng]).addTo(map).bindPopup(`<div class="font-black p-1">${name}</div>`);
+                    markers.push(m);
+                    bounds.extend([lat, lng]);
+                });
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        function renderStopsList() {
+            const list = document.getElementById('bus-stops-list');
+            const busId = document.getElementById('editor-bus-select').value;
+            list.innerHTML = '';
+            
+            if (!busId) {
+                list.innerHTML = '<div class="text-center py-10 text-slate-300 font-bold">バスを選択してください</div>';
+                return;
+            }
+
+            const stops = busStops.filter(s => s.busId === busId);
+            if (stops.length === 0) {
+                list.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold">バス停がありません。<br>地図をクリックして追加してください。</div>';
+                return;
+            }
+
+            stops.forEach(stop => {
+                const bus = buses.find(b => b.id === busId);
+                const name = window.Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
+                const div = document.createElement('div');
+                div.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center group hover:border-blue-200 transition-colors";
+                div.innerHTML = `
+                    <span class="font-bold text-slate-700">${name}</span> 
+                    <button onclick="deleteStop('${stop.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition">✕</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        window.deleteStop = async (id) => {
+            if (confirm("このバス停を削除しますか？")) await deleteDoc(doc(db, "busStops", id));
+        };
+
+        window.refreshMap = () => {
+            updateMapMarkers();
+            renderStopsList();
+        };
+
+    </script>
+</body>
+</html>
