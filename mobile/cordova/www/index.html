@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>バス位置送信アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="cordova.js"></script>
+</head>
+<body class="bg-gray-950 text-white min-h-screen font-sans selection:bg-blue-500/30">
+    <div id="app" class="p-6 flex flex-col items-center justify-center min-h-[100dvh]">
+        
+        <!-- Setup Section -->
+        <div id="setup-section" class="w-full max-w-sm bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-gray-800 transition-all duration-500">
+            <div class="flex justify-center mb-6">
+                <div class="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl">📡</div>
+            </div>
+            <h2 class="text-2xl font-black mb-2 text-center">初期設定</h2>
+            <p class="text-gray-500 text-center mb-8 text-sm px-4">管理者から発行された招待コードを入力してください</p>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">招待コード</label>
+                    <input type="text" id="invite-code" 
+                        class="w-full p-4 bg-gray-800 rounded-2xl border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-lg font-mono placeholder:text-gray-600" 
+                        placeholder="0000:xxxx...">
+                </div>
+                <button onclick="saveSettings()" 
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-[0.98]">
+                    設定を完了する
+                </button>
+            </div>
+        </div>
+
+        <!-- Tracking Section -->
+        <div id="tracking-section" class="hidden w-full max-w-sm text-center space-y-10 animate-in fade-in zoom-in duration-500">
+            <div class="space-y-2">
+                <div id="status-badge" class="inline-flex items-center px-3 py-1 rounded-full bg-gray-900 border border-gray-800 text-[10px] font-bold tracking-widest uppercase text-gray-500">
+                    <span id="status-dot" class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                    <span id="status-label">Offline</span>
+                </div>
+                <p id="bus-id-display" class="text-[10px] font-mono text-gray-700 tracking-tighter opacity-50"></p>
+            </div>
+
+            <!-- Visual Status Indicator -->
+            <div class="relative flex justify-center">
+                <div id="pulse-ring" class="absolute inset-0 bg-red-500/20 rounded-full animate-ping hidden"></div>
+                <div id="status-orb" class="w-48 h-48 bg-gray-900 rounded-full flex items-center justify-center border-4 border-gray-800 shadow-2xl relative z-10 transition-colors duration-500">
+                    <span id="status-emoji" class="text-7xl grayscale transition-all duration-500">🚌</span>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <h2 id="status-text" class="text-3xl font-black tracking-tight">送信停止中</h2>
+                <p id="force-stop-msg" class="text-amber-500 hidden text-sm font-medium bg-amber-500/10 py-2 rounded-xl border border-amber-500/20">
+                    ⚠️ 管理者により強制停止されています
+                </p>
+            </div>
+
+            <button id="toggle-btn" onclick="toggleTracking()" 
+                class="w-full py-5 bg-white text-black rounded-[2rem] text-xl font-black shadow-xl transition-all active:scale-[0.97] hover:bg-gray-100">
+                送信を開始
+            </button>
+
+            <div class="flex gap-6 justify-center">
+                <button onclick="openMetadata()" class="text-gray-500 hover:text-blue-400 text-xs font-bold transition-colors">車両情報</button>
+                <div class="w-px h-3 bg-gray-800 mt-0.5"></div>
+                <button onclick="resetSettings()" class="text-gray-500 hover:text-red-400 text-xs font-bold transition-colors">リセット</button>
+            </div>
+        </div>
+
+        <!-- Metadata Modal -->
+        <div id="metadata-modal" class="hidden fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 transition-all duration-300">
+            <div class="bg-gray-900 p-8 rounded-[2.5rem] w-full max-w-sm border border-gray-800 shadow-2xl">
+                <h3 class="text-xl font-black mb-6">車両情報の設定</h3>
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">路線名</label>
+                        <input type="text" id="route-name" class="w-full p-4 bg-gray-800 rounded-2xl border border-gray-700 outline-none focus:ring-1 focus:ring-blue-500" placeholder="例: ひまわりコース">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">車両番号</label>
+                        <input type="text" id="vehicle-num" class="w-full p-4 bg-gray-800 rounded-2xl border border-gray-700 outline-none focus:ring-1 focus:ring-blue-500" placeholder="例: 足立 200 あ 1234">
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button onclick="closeMetadata()" class="flex-1 bg-gray-800 py-4 rounded-2xl font-bold text-gray-400 hover:bg-gray-700 transition-colors">閉じる</button>
+                        <button onclick="saveMetadata()" class="flex-1 bg-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-500 transition-all active:scale-[0.98]">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/index.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseApp = initializeApp(window.firebaseConfig);
+        const db = getFirestore(firebaseApp);
+
+        let isTracking = false;
+        let authData = JSON.parse(localStorage.getItem('bus_auth'));
+        let watchId = null;
+        let config = { interval: 10, forceStop: false }; // Default 10s for better accuracy
+
+        if (authData) showTracking();
+
+        window.saveSettings = () => {
+            const code = document.getElementById('invite-code').value.trim();
+            const decoded = window.Encryption.decodeInviteCode(code);
+            if (!decoded) {
+                alert("無効な招待コードです");
+                return;
+            }
+            authData = decoded;
+            localStorage.setItem('bus_auth', JSON.stringify(authData));
+            showTracking();
+        };
+
+        window.resetSettings = () => {
+            if (confirm("設定をリセットしますか？送信中の場合は停止します。")) {
+                stopTracking();
+                localStorage.removeItem('bus_auth');
+                location.reload();
+            }
+        };
+
+        function showTracking() {
+            document.getElementById('setup-section').classList.add('hidden');
+            document.getElementById('tracking-section').classList.remove('hidden');
+            document.getElementById('bus-id-display').innerText = "DEVICE ID: " + authData.busId;
+            listenToConfig();
+        }
+
+        function listenToConfig() {
+            onSnapshot(doc(db, "buses", authData.busId), (doc) => {
+                const data = doc.data();
+                if (!data) return;
+                config = data.config || config;
+                
+                if (config.forceStop && isTracking) {
+                    stopTracking();
+                }
+                document.getElementById('force-stop-msg').classList.toggle('hidden', !config.forceStop);
+                document.getElementById('toggle-btn').disabled = config.forceStop;
+            });
+        }
+
+        window.toggleTracking = () => {
+            if (isTracking) stopTracking();
+            else startTracking();
+        };
+
+        function startTracking() {
+            isTracking = true;
+            updateUI(true);
+
+            // Set up Cordova Geolocation watch with high accuracy
+            watchId = navigator.geolocation.watchPosition(
+                onLocationUpdate,
+                (err) => {
+                    console.error("GPS Error:", err);
+                    if (err.code === 1) alert("位置情報の許可が必要です");
+                },
+                { 
+                    enableHighAccuracy: true, 
+                    distanceFilter: 0, // Request every update for processing
+                    maximumAge: 5000 
+                }
+            );
+
+            // Start background mode if plugin is available
+            if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
+                cordova.plugins.backgroundMode.enable();
+            }
+
+            // Interval-based reporting to balance battery and accuracy
+            window.reportTimer = setInterval(reportLocation, config.interval * 1000);
+        }
+
+        function stopTracking() {
+            isTracking = false;
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (window.reportTimer) clearInterval(window.reportTimer);
+            
+            if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
+                cordova.plugins.backgroundMode.disable();
+            }
+
+            updateUI(false);
+        }
+
+        function updateUI(active) {
+            const orb = document.getElementById('status-orb');
+            const emoji = document.getElementById('status-emoji');
+            const text = document.getElementById('status-text');
+            const btn = document.getElementById('toggle-btn');
+            const ring = document.getElementById('pulse-ring');
+            const dot = document.getElementById('status-dot');
+            const label = document.getElementById('status-label');
+
+            if (active) {
+                orb.classList.replace('border-gray-800', 'border-green-500/50');
+                emoji.classList.remove('grayscale');
+                text.innerText = "送信中...";
+                btn.innerText = "送信を停止する";
+                btn.classList.replace('bg-white', 'bg-red-600');
+                btn.classList.replace('text-black', 'text-white');
+                ring.classList.remove('hidden');
+                dot.classList.replace('bg-red-500', 'bg-green-500');
+                label.innerText = "Transmitting";
+                label.classList.replace('text-gray-500', 'text-green-500');
+            } else {
+                orb.classList.replace('border-green-500/50', 'border-gray-800');
+                emoji.classList.add('grayscale');
+                text.innerText = "送信停止中";
+                btn.innerText = "送信を開始";
+                btn.classList.replace('bg-red-600', 'bg-white');
+                btn.classList.replace('text-white', 'text-black');
+                ring.classList.add('hidden');
+                dot.classList.replace('bg-green-500', 'bg-red-500');
+                label.innerText = "Offline";
+                label.classList.replace('text-green-500', 'text-gray-500');
+            }
+        }
+
+        let lastPosition = null;
+        function onLocationUpdate(pos) {
+            lastPosition = pos;
+        }
+
+        async function reportLocation() {
+            if (!lastPosition || !isTracking) return;
+            try {
+                const locStr = `${lastPosition.coords.latitude},${lastPosition.coords.longitude}`;
+                const encLoc = window.Encryption.encrypt(locStr, authData.key);
+
+                await updateDoc(doc(db, "buses", authData.busId), {
+                    "status.encryptedLocation": encLoc,
+                    "status.updatedAt": serverTimestamp()
+                });
+            } catch (e) {
+                console.error("Report failed:", e);
+            }
+        }
+
+        window.openMetadata = () => {
+            document.getElementById('metadata-modal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('metadata-modal').classList.add('opacity-100'), 10);
+        };
+        
+        window.closeMetadata = () => {
+            document.getElementById('metadata-modal').classList.remove('opacity-100');
+            setTimeout(() => document.getElementById('metadata-modal').classList.add('hidden'), 300);
+        };
+
+        window.saveMetadata = async () => {
+            const route = document.getElementById('route-name').value.trim();
+            const vehicle = document.getElementById('vehicle-num').value.trim();
+            if (!route || !vehicle) {
+                alert("路線名と車両番号を入力してください");
+                return;
+            }
+
+            const encRoute = window.Encryption.encrypt(route, authData.key);
+            const encVehicle = window.Encryption.encrypt(vehicle, authData.key);
+
+            try {
+                await updateDoc(doc(db, "buses", authData.busId), {
+                    "metadata.encryptedRouteName": encRoute,
+                    "metadata.encryptedVehicleNumber": encVehicle
+                });
+                closeMetadata();
+                alert("保存完了しました");
+            } catch (e) {
+                alert("保存に失敗しました");
+            }
+        };
+    </script>
+</body>
+</html>
