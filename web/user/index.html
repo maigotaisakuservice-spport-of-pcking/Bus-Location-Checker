@@ -140,21 +140,26 @@
 
             <!-- Floating Action Buttons -->
             <div class="fixed bottom-10 right-6 z-[1000] space-y-4">
-                <button id="btn-follow" onclick="toggleAutoFollow()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-red-100 flex items-center justify-center text-red-500 active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                <!-- Auto Follow Toggle -->
+                <button id="btn-follow" onclick="toggleAutoFollow()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-red-100 flex flex-col items-center justify-center text-red-500 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
+                    <span class="text-[8px] font-black uppercase mt-0.5">自動追従</span>
                 </button>
-                <button onclick="centerOnBus()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex items-center justify-center text-slate-400 active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                <!-- Center on Bus -->
+                <button onclick="centerOnBus()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex flex-col items-center justify-center text-slate-500 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9.003 9.003 0 008.367-5.633M12 21a9.003 9.003 0 01-8.367-5.633M12 21V12m0 0l3 3m-3-3l-3 3M12 3a9 9 0 010 18" />
                     </svg>
+                    <span class="text-[8px] font-black uppercase mt-0.5">バスを探す</span>
                 </button>
-                <button onclick="logout()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex items-center justify-center text-slate-300 hover:text-red-400 transition-all">
+                <!-- Logout -->
+                <button onclick="logout()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex flex-col items-center justify-center text-slate-300 hover:text-red-400 transition-all">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
+                    <span class="text-[8px] font-black uppercase mt-0.5">ログアウト</span>
                 </button>
             </div>
 
@@ -497,20 +502,34 @@
         function startTracking() {
             if (!window.authData) return;
 
-            onSnapshot(doc(db, "config", "broadcast"), (snap) => {
-                const data = snap.data();
+            let globalMsg = "";
+            let busMsg = "";
+
+            const updateBanner = () => {
                 const banner = document.getElementById('emergency-banner');
-                if (data && data.message) {
-                    document.getElementById('emergency-text').innerText = data.message;
+                const textEl = document.getElementById('emergency-text');
+                const msg = busMsg || globalMsg;
+                if (msg) {
+                    textEl.innerText = msg;
                     banner.classList.remove('hidden');
                 } else {
                     banner.classList.add('hidden');
                 }
+            };
+
+            onSnapshot(doc(db, "config", "broadcast"), (snap) => {
+                const data = snap.data();
+                globalMsg = (data && data.message) ? data.message : "";
+                updateBanner();
             });
 
             onSnapshot(doc(db, "buses", window.authData.busId), (doc) => {
                 const data = doc.data();
                 if (!data) return;
+
+                busMsg = (data.status && data.status.emergencyMessage) ? data.status.emergencyMessage : "";
+                updateBanner();
+
                 if (data.status && data.status.encryptedLocation) {
                     updateBusLocation(data.status.encryptedLocation, data.status.lastUpdated);
                 }

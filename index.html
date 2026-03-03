@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>バス運行状況確認システム</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <style>
         .glass-card {
             background: rgba(255, 255, 255, 0.9);
@@ -41,10 +42,15 @@
 
         function goToAdmin() {
             const passcode = prompt("管理者用パスコードを入力してください:");
-            // デフォルトのパスコードは 'admin123' としますが、必要に応じて変更可能です。
-            if (passcode === 'admin123') {
+            if (passcode === null) return;
+
+            // SHA-256 Hash of 'admin-dev-7x9q'
+            const targetHash = "4d3b347af62a9629e575c6acac62aebfc993e254ddc3226a47cd6c8957535783";
+            const hashedInput = CryptoJS.SHA256(passcode).toString();
+
+            if (hashedInput === targetHash) {
                 window.location.href = 'web/admin/index.html';
-            } else if (passcode !== null) {
+            } else {
                 alert("パスコードが正しくありません");
             }
         }
