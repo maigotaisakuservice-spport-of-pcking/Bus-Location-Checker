@@ -69,12 +69,22 @@
         }
 
         #info-panel {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            max-height: 85vh;
+            overflow-y: auto;
+            scrollbar-width: none; /* Hide scrollbar for Chrome/Safari */
         }
+        #info-panel::-webkit-scrollbar { display: none; }
+
         .panel-hidden {
-            transform: translateY(-20px);
+            transform: translateY(-20px) scale(0.95);
             opacity: 0;
             pointer-events: none;
+        }
+
+        /* Hide map elements during login */
+        .login-active #map-section {
+            display: none !important;
         }
 
         @keyframes marquee {
@@ -86,94 +96,112 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen overflow-hidden">
+<body class="bg-slate-50 text-slate-900 min-h-screen overflow-hidden login-active">
     <div id="emergency-banner" class="hidden fixed top-0 left-0 right-0 z-[2000] bg-red-600 text-white py-3 overflow-hidden">
         <div class="animate-marquee whitespace-nowrap inline-block px-10 font-black text-sm uppercase tracking-wider" id="emergency-text">---</div>
     </div>
     <div id="app">
         <!-- Login Section -->
-        <div id="login-section" class="flex items-center justify-center min-h-screen p-4 transition-opacity duration-500">
-            <div class="max-w-md w-full bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100">
-                <div class="flex justify-center mb-8">
-                    <div class="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-4xl shadow-inner">🚌</div>
+        <div id="login-section" class="flex items-center justify-center min-h-screen p-4 transition-all duration-500 overflow-y-auto">
+            <div class="max-w-[440px] w-full bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 my-8">
+                <div class="flex justify-center mb-6">
+                    <div class="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center text-4xl shadow-inner rotate-3">🚌</div>
                 </div>
                 <h2 class="text-3xl font-black mb-2 text-center text-slate-800 tracking-tight">バス位置確認</h2>
-                <p class="text-slate-400 text-center mb-10 text-sm font-medium">情報を入力して開始してください</p>
-                <div class="space-y-6">
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">招待コード</label>
-                        <input type="text" id="invite-code" class="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-lg font-bold" placeholder="0000:xxxx...">
+                <p class="text-slate-400 text-center mb-8 text-sm font-medium">情報を入力して開始してください</p>
+                <div class="space-y-5">
+                    <div class="group">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">招待コード</label>
+                        <input type="text" id="invite-code" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="0000:xxxx...">
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">保護者名</label>
-                        <input type="text" id="parent-name" class="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-lg font-bold" placeholder="山田 太郎">
+                    <div class="group">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">保護者名</label>
+                        <input type="text" id="parent-name" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="山田 太郎">
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">クラス名</label>
-                        <input type="text" id="parent-class" class="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-lg font-bold" placeholder="ひまわり組">
+                    <div class="group">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">クラス名</label>
+                        <input type="text" id="parent-class" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="ひまわり組">
                     </div>
-                    <button onclick="login()" class="w-full bg-red-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">ログインする</button>
-                    <p id="error" class="text-red-500 text-sm hidden text-center font-bold bg-red-50 p-4 rounded-2xl border border-red-100"></p>
+                    <button onclick="login()" class="w-full bg-red-500 text-white py-4 sm:py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">ログインする</button>
+                    <p id="error" class="text-red-500 text-xs hidden text-center font-bold bg-red-50 p-4 rounded-2xl border border-red-100"></p>
                 </div>
             </div>
         </div>
 
         <!-- Map Section -->
-        <div id="map-section" class="hidden opacity-0 transition-opacity duration-700">
-            <header id="info-panel" class="fixed top-6 left-6 right-6 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-[1000] panel-hidden">
-                <div id="bus-selector" class="mb-4 flex flex-wrap gap-2 justify-center md:justify-start"></div>
-                <div class="glass-panel p-6 rounded-[2rem] shadow-2xl border border-white/50 flex justify-between items-center">
-                    <div>
-                        <h1 id="route-name" class="text-lg font-black text-slate-800 leading-tight">読み込み中...</h1>
-                        <div class="flex items-center mt-1">
-                            <span class="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                            <p id="vehicle-num" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">車両番号 --</p>
-                            <span class="mx-2 text-slate-200">|</span>
-                            <p id="distance-est" class="text-[10px] font-black text-blue-500 uppercase tracking-widest">距離測定中...</p>
-                            <span class="mx-2 text-slate-200">|</span>
-                            <p id="speed-display" class="text-[10px] font-black text-green-500 uppercase tracking-widest">--- km/h</p>
+        <div id="map-section" class="hidden opacity-0 transition-all duration-700">
+            <header id="info-panel" class="fixed top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-[1000] panel-hidden">
+                <div id="bus-selector" class="mb-3 flex flex-wrap gap-2 justify-center md:justify-start"></div>
+                <div class="glass-panel p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.25rem] shadow-2xl border border-white/60 flex justify-between items-center ring-1 ring-black/5">
+                    <div class="flex-1 min-w-0 pr-4">
+                        <h1 id="route-name" class="text-base sm:text-xl font-black text-slate-800 leading-tight truncate">読み込み中...</h1>
+                        <div class="flex flex-wrap items-center mt-1.5 gap-y-1">
+                            <div class="flex items-center mr-3">
+                                <span class="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
+                                <p id="vehicle-num" class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">車両 --</p>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="hidden sm:inline mx-2 text-slate-200">|</span>
+                                <p id="distance-est" class="text-[9px] sm:text-[10px] font-black text-blue-500 uppercase tracking-widest whitespace-nowrap">距離測定中...</p>
+                                <span class="mx-2 text-slate-200">|</span>
+                                <p id="speed-display" class="text-[9px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest whitespace-nowrap">--- km/h</p>
+                            </div>
                         </div>
                     </div>
-                    <button onclick="toggleInfo()" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">✕</button>
+                    <button onclick="toggleInfo()" class="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-400 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
                 </div>
             </header>
 
             <!-- Floating Action Buttons -->
-            <div class="fixed bottom-10 right-6 z-[1000] space-y-4">
+            <div class="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 z-[1000] flex flex-col items-end space-y-4">
                 <!-- Auto Follow Toggle -->
-                <button id="btn-follow" onclick="toggleAutoFollow()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-red-100 flex flex-col items-center justify-center text-red-500 active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button id="btn-follow" onclick="toggleAutoFollow()" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-slate-400 active:scale-90 transition-all hover:border-red-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
-                    <span class="text-[8px] font-black uppercase mt-0.5">自動追従</span>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">自動追従</span>
                 </button>
                 <!-- Center on Bus -->
-                <button onclick="centerOnBus()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex flex-col items-center justify-center text-slate-500 active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button onclick="centerOnBus(this)" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-slate-500 active:scale-90 transition-all hover:bg-slate-50/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9.003 9.003 0 008.367-5.633M12 21a9.003 9.003 0 01-8.367-5.633M12 21V12m0 0l3 3m-3-3l-3 3M12 3a9 9 0 010 18" />
                     </svg>
-                    <span class="text-[8px] font-black uppercase mt-0.5">バスを探す</span>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">バスを探す</span>
+                </button>
+                <!-- Info Visibility Toggle (New Mobile Friendly) -->
+                <button onclick="toggleInfo()" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-blue-500 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">運行情報</span>
                 </button>
                 <!-- Logout -->
-                <button onclick="logout()" class="glass-panel w-16 h-16 rounded-full shadow-2xl border border-white/50 flex flex-col items-center justify-center text-slate-300 hover:text-red-400 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <button onclick="logout()" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-slate-300 hover:text-red-400 transition-all active:scale-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
-                    <span class="text-[8px] font-black uppercase mt-0.5">ログアウト</span>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">終了</span>
                 </button>
             </div>
 
             <div id="map"></div>
 
             <!-- Legend and Status -->
-            <div class="fixed bottom-32 left-6 z-[1000] space-y-2 pointer-events-none">
-                <div class="glass-panel px-4 py-2 rounded-xl shadow-lg border border-white/50 text-[10px] font-black uppercase tracking-widest flex items-center space-x-3 pointer-events-auto">
-                    <div class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-1.5"></span> 走行予定</div>
-                    <div class="flex items-center"><span class="w-2 h-2 bg-slate-400 rounded-full mr-1.5"></span> 通過済み</div>
-                    <div class="flex items-center"><span class="w-2 h-2 bg-amber-500 rounded-full mr-1.5"></span> 自分のバス停</div>
+            <div class="fixed bottom-6 left-6 sm:bottom-10 sm:left-10 z-[1000] flex flex-col items-start space-y-3 pointer-events-none transition-all">
+                <div class="glass-panel p-3 sm:p-4 rounded-2xl shadow-xl border border-white/40 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] flex flex-col space-y-2.5 pointer-events-auto">
+                    <div class="flex items-center"><span class="w-2.5 h-2.5 bg-purple-500 rounded-full mr-2.5 shadow-sm shadow-purple-200"></span> 走行予定</div>
+                    <div class="flex items-center"><span class="w-2.5 h-2.5 bg-slate-400 rounded-full mr-2.5 shadow-sm shadow-slate-200"></span> 通過済み</div>
+                    <div class="flex items-center"><span class="w-2.5 h-2.5 bg-amber-500 rounded-full mr-2.5 shadow-sm shadow-amber-200"></span> 自分のバス停</div>
                 </div>
-                <div id="status-badge" class="hidden glass-panel px-4 py-2 rounded-xl shadow-lg border border-red-100 text-[10px] font-black uppercase tracking-widest text-red-500 flex items-center space-x-2 pointer-events-auto">
-                    <span class="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                <div id="status-badge" class="hidden glass-panel px-4 py-3 rounded-2xl shadow-xl border border-red-100/50 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] text-red-500 flex items-center space-x-3 pointer-events-auto ring-2 ring-red-50/50">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
                     <span>時間外 / 停止中</span>
                 </div>
             </div>
@@ -269,11 +297,15 @@
             const loginSec = document.getElementById('login-section');
             const mapSec = document.getElementById('map-section');
 
+            document.body.classList.remove('login-active');
             loginSec.classList.add('opacity-0');
             setTimeout(() => {
                 loginSec.classList.add('hidden');
                 mapSec.classList.remove('hidden');
-                setTimeout(() => mapSec.classList.remove('opacity-0'), 50);
+                setTimeout(() => {
+                    mapSec.classList.remove('opacity-0');
+                    if (map) map.invalidateSize();
+                }, 50);
                 initMap();
                 startTracking();
                 initWebRTC();
