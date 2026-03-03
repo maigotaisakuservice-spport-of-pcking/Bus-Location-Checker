@@ -4,24 +4,26 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "web",
+    "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "gas/**",
+      "mobile/**"
     ],
     "rewrites": [
       {
         "source": "/admin/**",
-        "destination": "/admin/index.html"
+        "destination": "/web/admin/index.html"
       },
       {
         "source": "/user/**",
-        "destination": "/user/index.html"
+        "destination": "/web/user/index.html"
       },
       {
         "source": "/sender/**",
-        "destination": "/sender/index.html"
+        "destination": "/web/sender/index.html"
       }
     ]
   }

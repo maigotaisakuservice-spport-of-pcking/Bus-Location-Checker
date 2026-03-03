@@ -1,5 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
+test('Landing page loads correctly', async ({ page }) => {
+  await page.goto('http://localhost:8080/index.html');
+  await expect(page).toHaveTitle(/バス運行状況確認システム/);
+  await expect(page.locator('button', { hasText: '管理者ページ' })).toBeVisible();
+  await expect(page.locator('button', { hasText: 'バス走行状況確認' })).toBeVisible();
+});
+
 test('User login page loads correctly', async ({ page }) => {
   await page.goto('http://localhost:8080/web/user/index.html');
   await expect(page).toHaveTitle(/バス位置確認 - ユーザー/);
