@@ -22,6 +22,17 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install Dependencies
+        run: |
+          npm init -y
+          npm install @playwright/test playwright
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Smoke Tests
+        run: npx playwright test
+
       - name: Install Cordova
         run: npm install -g cordova
 
