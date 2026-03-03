@@ -206,14 +206,22 @@
             watchId = navigator.geolocation.watchPosition(
                 async (pos) => {
                     const now = Date.now();
-                    if (now - lastUpdateTime < UPDATE_INTERVAL) return;
-                    lastUpdateTime = now;
-
+                    // No throttle for WebRTC
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
                     const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0; // m/s to km/h
                     const locStr = `${lat},${lng}:${speed}`;
                     const encLoc = window.Encryption.encrypt(locStr, authData.key);
+
+                    // Broadcast via WebRTC immediately
+                    Object.values(peerConnections).forEach(pc => {
+                        if (pc.dc && pc.dc.readyState === "open") {
+                            pc.dc.send(JSON.stringify({ location: encLoc, ts: now }));
+                        }
+                    });
+
+                    if (now - lastUpdateTime < UPDATE_INTERVAL) return;
+                    lastUpdateTime = now;
 
                     checkArrival(lat, lng);
 
@@ -221,13 +229,6 @@
                         "status.encryptedLocation": encLoc,
                         "status.lastUpdated": serverTimestamp(),
                         "status.isActive": true
-                    });
-
-                    // Broadcast via WebRTC
-                    Object.values(peerConnections).forEach(pc => {
-                        if (pc.dc && pc.dc.readyState === "open") {
-                            pc.dc.send(JSON.stringify({ location: encLoc, ts: now }));
-                        }
                     });
 
                     const timeStr = new Date(now).toLocaleTimeString();

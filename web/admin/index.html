@@ -336,6 +336,7 @@
                 users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderUsers();
                 updateStats();
+                updateYearFilter();
             });
 
             onSnapshot(collection(db, "busStops"), (snapshot) => {
@@ -397,6 +398,20 @@
                 optMsg.value = bus.id;
                 optMsg.innerText = name;
                 msgSelect.appendChild(optMsg);
+            });
+        }
+
+        function updateYearFilter() {
+            const filter = document.getElementById('year-filter');
+            const current = filter.value;
+            const years = [...new Set(users.map(u => u.regYear || "2024"))].sort().reverse();
+            filter.innerHTML = '<option value="all">全年度を表示</option>';
+            years.forEach(y => {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.innerText = `${y}年度`;
+                if (y === current) opt.selected = true;
+                filter.appendChild(opt);
             });
         }
 
@@ -536,9 +551,19 @@
             const bus = buses.find(b => b.id === id);
             const name = prompt("路線の名称を変更", window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey));
             if (!name) return;
-            await updateDoc(doc(db, "buses", id), {
-                "metadata.encryptedRouteName": window.Encryption.encrypt(name, bus.encryptionKey)
-            });
+
+            const doDelete = confirm("この路線（バス）を完全に削除しますか？\n※関連するバス停データも削除されます。");
+            if (doDelete) {
+                // Bulk delete stops
+                const stops = busStops.filter(s => s.busId === id);
+                for (const s of stops) await deleteDoc(doc(db, "busStops", s.id));
+                await deleteDoc(doc(db, "buses", id));
+                alert("路線を削除しました");
+            } else {
+                await updateDoc(doc(db, "buses", id), {
+                    "metadata.encryptedRouteName": window.Encryption.encrypt(name, bus.encryptionKey)
+                });
+            }
         };
 
         window.copyInvite = (id, key) => {
@@ -588,11 +613,16 @@
             stops.forEach(stop => {
                 const bus = buses.find(b => b.id === busId);
                 const name = window.Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
+                const loc = window.Encryption.decrypt(stop.encryptedLocation, bus.encryptionKey).split(',').map(Number);
                 const div = document.createElement('div');
-                div.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center group hover:border-blue-200 transition-colors";
+                div.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center group hover:border-blue-200 transition-colors cursor-pointer";
+                div.onclick = () => {
+                    map.flyTo(loc, 17);
+                    markers.find(m => m.getLatLng().lat === loc[0] && m.getLatLng().lng === loc[1])?.openPopup();
+                };
                 div.innerHTML = `
                     <span class="font-bold text-slate-700">${name}</span>
-                    <button onclick="deleteStop('${stop.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition">✕</button>
+                    <button onclick="event.stopPropagation(); deleteStop('${stop.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition">✕</button>
                 `;
                 list.appendChild(div);
             });

@@ -44,7 +44,6 @@
             const passcode = prompt("管理者用パスコードを入力してください:");
             if (passcode === null) return;
 
-            // SHA-256 Hash of 'admin-dev-7x9q'
             const targetHash = "4d3b347af62a9629e575c6acac62aebfc993e254ddc3226a47cd6c8957535783";
             const hashedInput = CryptoJS.SHA256(passcode).toString();
 

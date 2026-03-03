@@ -28,6 +28,13 @@
             0% { transform: scale(0.8); opacity: 0.8; }
             100% { transform: scale(2.4); opacity: 0; }
         }
+
+        @keyframes btn-glow {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .animate-glow { animation: btn-glow 0.8s ease-out; }
         .bus-pulse::after {
             content: '';
             position: absolute;
@@ -108,21 +115,31 @@
                     <div class="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center text-4xl shadow-inner rotate-3">🚌</div>
                 </div>
                 <h2 class="text-3xl font-black mb-2 text-center text-slate-800 tracking-tight">バス位置確認</h2>
-                <p class="text-slate-400 text-center mb-8 text-sm font-medium">情報を入力して開始してください</p>
+                <p class="text-slate-400 text-center mb-6 text-sm font-medium">Googleアカウントでログインして開始</p>
+
                 <div class="space-y-5">
-                    <div class="group">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">招待コード</label>
-                        <input type="text" id="invite-code" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="0000:xxxx...">
+                    <button onclick="loginWithGoogle()" class="w-full bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-base flex items-center justify-center space-x-3 hover:bg-slate-50 transition-all shadow-sm">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z"/></svg>
+                        <span>Googleでログイン</span>
+                    </button>
+
+                    <div id="registration-fields" class="hidden animate-fade-in space-y-5 pt-4 border-t border-slate-100">
+                        <p class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] text-center mb-2">初回登録 / 新規路線の追加</p>
+                        <div class="group">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">招待コード</label>
+                            <input type="text" id="invite-code" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="0000:xxxx...">
+                        </div>
+                        <div class="group">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">保護者名</label>
+                            <input type="text" id="parent-name" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="山田 太郎">
+                        </div>
+                        <div class="group">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">クラス名</label>
+                            <input type="text" id="parent-class" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="ひまわり組">
+                        </div>
+                        <button onclick="register()" class="w-full bg-red-500 text-white py-4 sm:py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">登録して開始</button>
                     </div>
-                    <div class="group">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">保護者名</label>
-                        <input type="text" id="parent-name" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="山田 太郎">
-                    </div>
-                    <div class="group">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">クラス名</label>
-                        <input type="text" id="parent-class" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="ひまわり組">
-                    </div>
-                    <button onclick="login()" class="w-full bg-red-500 text-white py-4 sm:py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">ログインする</button>
+
                     <p id="error" class="text-red-500 text-xs hidden text-center font-bold bg-red-50 p-4 rounded-2xl border border-red-100"></p>
                 </div>
             </div>
@@ -210,23 +227,58 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, query, where, addDoc, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, where, addDoc, serverTimestamp, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
 
         const app = initializeApp(window.firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
 
         let map, busMarker, stopsMarkers = [], routePolyline, passedPolyline;
         let currentBusPos = null;
         let isAutoFollow = true;
         let pc = null;
-        let myStopId = localStorage.getItem('my_stop_id');
+        let myStopId = null;
 
         window.allAuths = JSON.parse(localStorage.getItem('user_auths')) || [];
         window.authData = window.allAuths[0];
 
-        window.login = async () => {
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const metaDoc = await getDoc(doc(db, "users_meta", user.uid));
+                if (metaDoc.exists()) {
+                    const data = metaDoc.data();
+                    window.allAuths = data.registeredBuses || [];
+                    localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+                    if (window.allAuths.length > 0) {
+                        window.authData = window.allAuths[0];
+                        window.showMap();
+                    } else {
+                        document.getElementById('registration-fields').classList.remove('hidden');
+                    }
+                } else {
+                    document.getElementById('registration-fields').classList.remove('hidden');
+                }
+            }
+        });
+
+        window.loginWithGoogle = async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (e) {
+                console.error("Auth failed", e);
+                document.getElementById('error').innerText = "認証に失敗しました";
+                document.getElementById('error').classList.remove('hidden');
+            }
+        };
+
+        window.register = async () => {
+            if (!auth.currentUser) {
+                alert("まずGoogleでログインしてください");
+                return;
+            }
             const code = document.getElementById('invite-code').value.trim();
             const name = document.getElementById('parent-name').value.trim();
             const cls = document.getElementById('parent-class').value.trim();
@@ -240,35 +292,64 @@
             }
 
             try {
+                const now = new Date();
+                const year = now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
+
+                const metaRef = doc(db, "users_meta", auth.currentUser.uid);
+                const metaSnap = await getDoc(metaRef);
+                let registeredBuses = metaSnap.exists() ? (metaSnap.data().registeredBuses || []) : [];
+
+                if (!registeredBuses.find(b => b.busId === decoded.busId)) {
+                    registeredBuses.push({ busId: decoded.busId, key: decoded.key, myStopId: null });
+                }
+
+                await setDoc(metaRef, {
+                    name,
+                    class: cls,
+                    registeredBuses,
+                    updatedAt: serverTimestamp(),
+                    regYear: year.toString()
+                }, { merge: true });
+
+                await setDoc(doc(db, "config", "fiscalYears"), { [year]: true }, { merge: true });
+                // Save specific record for user management
                 await addDoc(collection(db, "users"), {
+                    uid: auth.currentUser.uid,
                     busId: decoded.busId,
                     encryptedName: window.Encryption.encrypt(name, decoded.key),
                     encryptedClass: window.Encryption.encrypt(cls, decoded.key),
                     createdAt: serverTimestamp(),
-                    regYear: "2024"
+                    regYear: year.toString()
                 });
 
-                window.allAuths.push(decoded);
+                window.allAuths = registeredBuses;
                 localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
                 window.authData = decoded;
                 window.showMap();
             } catch (e) {
-                console.error("Login error:", e);
-                document.getElementById('error').innerText = "ログインに失敗しました";
+                console.error("Register error:", e);
+                document.getElementById('error').innerText = "登録に失敗しました";
                 document.getElementById('error').classList.remove('hidden');
             }
         };
 
-        window.logout = () => {
+        window.logout = async () => {
             if (confirm("ログアウトしますか？")) {
+                await signOut(auth);
                 localStorage.removeItem('user_auths');
-                localStorage.removeItem('my_stop_id');
                 location.reload();
             }
         };
 
         window.showMap = async () => {
-            if (window.allAuths.length > 1) {
+            if (auth.currentUser) {
+                const metaDoc = await getDoc(doc(db, "users_meta", auth.currentUser.uid));
+                if (metaDoc.exists()) {
+                    const busInfo = metaDoc.data().registeredBuses.find(b => b.busId === window.authData.busId);
+                    if (busInfo) myStopId = busInfo.myStopId;
+                }
+            }
+            if (window.allAuths.length > 0) {
                 const sel = document.getElementById('bus-selector');
                 sel.innerHTML = '';
                 for (let i=0; i<window.allAuths.length; i++) {
@@ -284,6 +365,24 @@
                     btn.onclick = () => window.switchBus(i);
                     sel.appendChild(btn);
                 }
+
+                // "Add Bus" button
+                const addBtn = document.createElement('button');
+                addBtn.className = "px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md bg-blue-500 text-white flex items-center space-x-2";
+                addBtn.innerHTML = "<span>＋</span> <span>路線を追加</span>";
+                addBtn.onclick = () => {
+                    const mapSec = document.getElementById('map-section');
+                    const loginSec = document.getElementById('login-section');
+                    document.body.classList.add('login-active');
+                    mapSec.classList.add('opacity-0');
+                    setTimeout(() => {
+                        mapSec.classList.add('hidden');
+                        loginSec.classList.remove('hidden');
+                        document.getElementById('registration-fields').classList.remove('hidden');
+                        setTimeout(() => loginSec.classList.remove('opacity-0'), 50);
+                    }, 500);
+                };
+                sel.appendChild(addBtn);
             }
 
             const auth = getAuth(app);
@@ -441,8 +540,12 @@
             }
         };
 
-        window.centerOnBus = () => {
+        window.centerOnBus = (btn) => {
             if (currentBusPos) {
+                const el = btn || document.querySelector('button[onclick*="centerOnBus"]');
+                el.classList.add('animate-glow');
+                setTimeout(() => el.classList.remove('animate-glow'), 800);
+
                 map.flyTo(currentBusPos, 16, { animate: true, duration: 1.5 });
                 if (!isAutoFollow) toggleAutoFollow();
             }
@@ -450,42 +553,96 @@
 
         let masterRoutePoints = [];
 
-        window.setMyStop = (id) => {
+        window.setMyStop = async (id) => {
             myStopId = id;
-            localStorage.setItem('my_stop_id', id);
+            if (auth.currentUser) {
+                const metaRef = doc(db, "users_meta", auth.currentUser.uid);
+                const busIdx = window.allAuths.findIndex(b => b.busId === window.authData.busId);
+                if (busIdx !== -1) {
+                    window.allAuths[busIdx].myStopId = id;
+                    await updateDoc(metaRef, { registeredBuses: window.allAuths });
+                    localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+                }
+            }
             alert("自分のバス停を設定しました");
             map.closePopup();
             updateRouteStyles();
         };
 
+        async function fetchRoute(points) {
+            if (points.length < 2) return points;
+            const coords = points.map(p => `${p[1]},${p[0]}`).join(';');
+            try {
+                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+                const data = await res.json();
+                if (data.routes && data.routes[0]) {
+                    return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                }
+            } catch (e) { console.error("OSRM failed", e); }
+            return points;
+        }
+
+        let detailedRoutePoints = [];
+
+        async function updateDetailedRoute() {
+            if (masterRoutePoints.length < 2) return;
+            detailedRoutePoints = await fetchRoute(masterRoutePoints);
+            updateRouteStyles();
+        }
+
         function updateRouteStyles() {
-            if (masterRoutePoints.length === 0 || !currentBusPos) return;
+            if (!currentBusPos) return;
             if (passedPolyline) map.removeLayer(passedPolyline);
             if (routePolyline) map.removeLayer(routePolyline);
 
-            const allPoints = masterRoutePoints;
-            let closestIdx = 0;
-            let minDist = Infinity;
+            const points = detailedRoutePoints.length > 0 ? detailedRoutePoints : masterRoutePoints;
 
-            allPoints.forEach((p, i) => {
+            // Find progress along the detailed path
+            let closestIdx = -1;
+            let minDist = Infinity;
+            points.forEach((p, i) => {
                 const d = map.distance(p, currentBusPos);
-                if (d < minDist) {
-                    minDist = d;
-                    closestIdx = i;
+                if (d < minDist) { minDist = d; closestIdx = i; }
+            });
+
+            // Threshold logic for stops (10m)
+            let lastPassedStopIdx = -1;
+            masterRoutePoints.forEach((sp, si) => {
+                const d = map.distance(sp, currentBusPos);
+                if (d < 10) {
+                    // Mark as arrived/passing if within 10m
+                    lastPassedStopIdx = si;
+                } else {
+                    // If we've already passed the point's index in the detailed path
+                    // we can assume it's passed.
+                    let stopInDetailedIdx = -1;
+                    let minSDist = Infinity;
+                    points.forEach((dp, di) => {
+                        const sd = map.distance(dp, sp);
+                        if (sd < minSDist) { minSDist = sd; stopInDetailedIdx = di; }
+                    });
+                    if (closestIdx > stopInDetailedIdx) {
+                        lastPassedStopIdx = si;
+                    }
                 }
             });
 
-            const passedPoints = allPoints.slice(0, closestIdx + 1);
-            const upcomingPoints = allPoints.slice(closestIdx);
+            const passedPoints = points.slice(0, closestIdx + 1);
+            // Include bus position for a smooth bridge
+            const upcomingPoints = [[currentBusPos.lat, currentBusPos.lng], ...points.slice(closestIdx + 1)];
 
-            passedPolyline = L.polyline(passedPoints, {color: '#94a3b8', weight: 6, opacity: 0.5}).addTo(map);
-            routePolyline = L.polyline(upcomingPoints, {color: '#8b5cf6', weight: 6, opacity: 0.7}).addTo(map);
+            if (passedPoints.length > 1) {
+                passedPolyline = L.polyline(passedPoints, {color: '#94a3b8', weight: 6, opacity: 0.5}).addTo(map);
+            }
+            if (upcomingPoints.length > 1) {
+                routePolyline = L.polyline(upcomingPoints, {color: '#8b5cf6', weight: 6, opacity: 0.7}).addTo(map);
+            }
 
             stopsMarkers.forEach((m, i) => {
                 const el = m.getElement();
                 if (el) {
                     const iconDiv = el.querySelector('.custom-stop-icon');
-                    iconDiv.classList.toggle('stop-passed', i <= closestIdx);
+                    iconDiv.classList.toggle('stop-passed', i <= lastPassedStopIdx);
                     iconDiv.classList.toggle('stop-mine', m.stopId === myStopId);
                 }
             });
@@ -590,7 +747,7 @@
                     return loc.split(',').map(Number);
                 });
 
-                updateRouteStyles();
+                updateDetailedRoute();
 
                 stopsMarkers = sortedStops.map((stop, idx) => {
                     const name = window.Encryption.decrypt(stop.encryptedName, window.authData.key);
