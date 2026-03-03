@@ -42,7 +42,7 @@ function getServiceAccountToken() {
    * 1. Add the "OAuth2" library to your GAS project (Script ID: 1B7_5jkDshY_g_8vAk6SkZp09S_UvIjw7on7sl41IdXmYfS_Z_Oa0C8E)
    * 2. Create a Service Account in GCP and download the JSON key.
    * 3. Use the library to get an access token for 'https://www.googleapis.com/auth/identitytoolkit'
-   * 
+   *
    * Example:
    * const service = OAuth2.createService('Firebase')
    *   .setTokenUrl('https://oauth2.googleapis.com/token')
@@ -51,5 +51,5 @@ function getServiceAccountToken() {
    *   .setScope('https://www.googleapis.com/auth/identitytoolkit');
    * return service.getAccessToken();
    */
-  return "YA29..."; 
+  return "YA29...";
 }

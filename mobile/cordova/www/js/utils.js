@@ -1,6 +1,6 @@
 /**
  * Global Configuration and Utilities for Mobile
- * 
+ *
  * NOTE: Ensure this matches web/shared/utils.js
  */
 

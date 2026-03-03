@@ -12,7 +12,7 @@
     <style>
         #map { height: 100vh; width: 100%; z-index: 1; }
         .leaflet-container { font-family: inherit; }
-        
+
         .custom-bus-icon {
             display: flex;
             align-items: center;
@@ -242,11 +242,11 @@
                     const authObj = window.allAuths[i];
                     const btn = document.createElement('button');
                     btn.className = `px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md flex items-center space-x-2 ${i === 0 ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 border border-slate-100'}`;
-                    
+
                     // Fetch route name for button
                     const bDoc = await getDoc(doc(db, "buses", authObj.busId));
                     const bName = bDoc.exists() ? window.Encryption.decrypt(bDoc.data().metadata.encryptedRouteName, authObj.key) : `バス ${i+1}`;
-                    
+
                     btn.innerHTML = `<span>🚌</span> <span>${bName}</span>`;
                     btn.onclick = () => window.switchBus(i);
                     sel.appendChild(btn);
@@ -263,7 +263,7 @@
 
             const loginSec = document.getElementById('login-section');
             const mapSec = document.getElementById('map-section');
-            
+
             loginSec.classList.add('opacity-0');
             setTimeout(() => {
                 loginSec.classList.add('hidden');
@@ -285,7 +285,7 @@
                 zoomControl: false,
                 attributionControl: false
             }).setView([35.6812, 139.7671], 15);
-            
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
             const busIcon = L.divIcon({
@@ -295,7 +295,7 @@
                 iconAnchor: [32, 32]
             });
             busMarker = L.marker([0,0], {icon: busIcon, zIndexOffset: 1000}).addTo(map);
-            
+
             busMarker.on('click', () => {
                 document.getElementById('info-panel').classList.remove('panel-hidden');
             });
@@ -310,7 +310,7 @@
                 if (permission === 'granted') {
                     const messaging = getMessaging(app);
                     /**
-                     * NOTE: Replace 'YOUR_PUBLIC_VAPID_KEY' with the key from 
+                     * NOTE: Replace 'YOUR_PUBLIC_VAPID_KEY' with the key from
                      * Firebase Console > Project Settings > Cloud Messaging > Web configuration
                      */
                     const token = await getToken(messaging, { vapidKey: 'B...' });
@@ -331,7 +331,7 @@
             pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
             let signalingId = null;
             const pendingCandidates = [];
-            
+
             const dc = pc.createDataChannel("location");
             dc.onmessage = (e) => {
                 const data = JSON.parse(e.data);
@@ -458,7 +458,7 @@
             const decrypted = window.Encryption.decrypt(encLoc, window.authData.key);
             const [coords, speed] = decrypted.split(':');
             const [lat, lng] = coords.split(',').map(Number);
-            
+
             if (speed !== undefined) {
                 document.getElementById('speed-display').innerText = `${speed} km/h`;
             }

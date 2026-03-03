@@ -12,7 +12,7 @@ let app = {
         if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
             // Enable background mode
             cordova.plugins.backgroundMode.enable();
-            
+
             // Set notification to show the app is running
             cordova.plugins.backgroundMode.setDefaults({
                 title: 'バス位置送信中',

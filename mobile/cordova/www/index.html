@@ -11,7 +11,7 @@
 </head>
 <body class="bg-gray-950 text-white min-h-screen font-sans selection:bg-blue-500/30">
     <div id="app" class="p-6 flex flex-col items-center justify-center min-h-[100dvh]">
-        
+
         <!-- Setup Section -->
         <div id="setup-section" class="w-full max-w-sm bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl border border-gray-800 transition-all duration-500">
             <div class="flex justify-center mb-6">
@@ -19,15 +19,15 @@
             </div>
             <h2 class="text-2xl font-black mb-2 text-center">初期設定</h2>
             <p class="text-gray-500 text-center mb-8 text-sm px-4">管理者から発行された招待コードを入力してください</p>
-            
+
             <div class="space-y-6">
                 <div>
                     <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">招待コード</label>
-                    <input type="text" id="invite-code" 
-                        class="w-full p-4 bg-gray-800 rounded-2xl border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-lg font-mono placeholder:text-gray-600" 
+                    <input type="text" id="invite-code"
+                        class="w-full p-4 bg-gray-800 rounded-2xl border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-lg font-mono placeholder:text-gray-600"
                         placeholder="0000:xxxx...">
                 </div>
-                <button onclick="saveSettings()" 
+                <button onclick="saveSettings()"
                     class="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-[0.98]">
                     設定を完了する
                 </button>
@@ -59,7 +59,7 @@
                 </p>
             </div>
 
-            <button id="toggle-btn" onclick="toggleTracking()" 
+            <button id="toggle-btn" onclick="toggleTracking()"
                 class="w-full py-5 bg-white text-black rounded-[2rem] text-xl font-black shadow-xl transition-all active:scale-[0.97] hover:bg-gray-100">
                 送信を開始
             </button>
@@ -140,7 +140,7 @@
                 const data = doc.data();
                 if (!data) return;
                 config = data.config || config;
-                
+
                 if (config.forceStop && isTracking) {
                     stopTracking();
                 }
@@ -165,10 +165,10 @@
                     console.error("GPS Error:", err);
                     if (err.code === 1) alert("位置情報の許可が必要です");
                 },
-                { 
-                    enableHighAccuracy: true, 
+                {
+                    enableHighAccuracy: true,
                     distanceFilter: 0, // Request every update for processing
-                    maximumAge: 5000 
+                    maximumAge: 5000
                 }
             );
 
@@ -185,7 +185,7 @@
             isTracking = false;
             if (watchId) navigator.geolocation.clearWatch(watchId);
             if (window.reportTimer) clearInterval(window.reportTimer);
-            
+
             if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
                 cordova.plugins.backgroundMode.disable();
             }
@@ -251,7 +251,7 @@
             document.getElementById('metadata-modal').classList.remove('hidden');
             setTimeout(() => document.getElementById('metadata-modal').classList.add('opacity-100'), 10);
         };
-        
+
         window.closeMetadata = () => {
             document.getElementById('metadata-modal').classList.remove('opacity-100');
             setTimeout(() => document.getElementById('metadata-modal').classList.add('hidden'), 300);

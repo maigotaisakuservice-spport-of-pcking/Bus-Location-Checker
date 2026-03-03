@@ -38,7 +38,7 @@
             <button id="toggle-btn" onclick="toggleTracking()" class="w-full bg-green-600 py-6 rounded-3xl text-2xl font-black shadow-lg shadow-green-900/20 active:scale-95 transition-all">
                 送信開始
             </button>
-            
+
             <p class="text-[10px] text-slate-500 mt-6 leading-relaxed">
                 ※送信中は画面を閉じないでください。<br>
                 ※スリープ防止機能を有効にしています。
@@ -72,7 +72,7 @@
                 document.getElementById('login-error').classList.remove('hidden');
                 return;
             }
-            
+
             // Verify bus exists
             const busDoc = await getDoc(doc(db, "buses", decoded.busId));
             if (!busDoc.exists()) {
@@ -106,7 +106,7 @@
 
             const stopsSnap = await getDocs(query(collection(db, "busStops"), where("busId", "==", authData.busId)));
             stops = stopsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
+
             initWebRTC();
         }
 
@@ -171,7 +171,7 @@
             stops.forEach(stop => {
                 const stopLoc = window.Encryption.decrypt(stop.encryptedLocation, authData.key);
                 const [sLat, sLng] = stopLoc.split(',').map(Number);
-                
+
                 // Approx 500m
                 const dist = Math.sqrt(Math.pow(sLat - lat, 2) + Math.pow(sLng - lng, 2));
                 if (dist < 0.005 && !notifiedStops.has(stop.id)) {
@@ -214,9 +214,9 @@
                     const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0; // m/s to km/h
                     const locStr = `${lat},${lng}:${speed}`;
                     const encLoc = window.Encryption.encrypt(locStr, authData.key);
-                    
+
                     checkArrival(lat, lng);
-                    
+
                     await updateDoc(doc(db, "buses", authData.busId), {
                         "status.encryptedLocation": encLoc,
                         "status.lastUpdated": serverTimestamp(),

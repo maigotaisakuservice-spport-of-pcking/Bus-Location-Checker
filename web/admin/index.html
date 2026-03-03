@@ -25,7 +25,7 @@
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen overflow-x-hidden font-sans">
     <div id="app" class="flex min-h-screen">
-        
+
         <!-- Sidebar / Navigation -->
         <aside id="sidebar" class="sidebar-transition sidebar-hidden md:transform-none fixed md:relative z-50 w-72 bg-slate-900 text-white min-h-screen flex flex-col shadow-2xl">
             <div class="p-8">
@@ -38,7 +38,7 @@
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
-                
+
                 <nav class="space-y-2">
                     <button onclick="switchView('dashboard')" class="w-full flex items-center space-x-4 p-4 rounded-2xl hover:bg-slate-800 transition nav-btn active-nav" data-view="dashboard">
                         <span class="text-xl">📊</span> <span class="font-bold">ダッシュボード</span>
@@ -54,7 +54,7 @@
 
             <div class="mt-auto p-8">
                 <button onclick="logout()" class="w-full flex items-center justify-center space-x-3 p-4 bg-slate-800 rounded-2xl hover:bg-red-600 transition group">
-                    <span class="group-hover:rotate-12 transition-transform">🚪</span> 
+                    <span class="group-hover:rotate-12 transition-transform">🚪</span>
                     <span class="font-bold">ログアウト</span>
                 </button>
             </div>
@@ -81,7 +81,7 @@
 
             <!-- Views Container -->
             <div id="views" class="p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
-                
+
                 <!-- Dashboard View -->
                 <section id="view-dashboard" class="space-y-8 animate-fade-in">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -201,10 +201,10 @@
     <div id="auth-modal" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
-            
+
             <h2 id="auth-title" class="text-3xl font-black mb-2 text-center text-slate-800">管理者認証</h2>
             <p class="text-slate-500 text-center mb-10 text-sm font-medium">運行管理システムへのアクセスを許可してください</p>
-            
+
             <div id="login-form" class="space-y-6">
                 <button onclick="loginWithGoogle()" class="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-bold flex items-center justify-center space-x-4 hover:bg-slate-800 transition active:scale-95 shadow-xl">
                     <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
@@ -226,7 +226,7 @@
                 </p>
                 <button onclick="location.reload()" class="w-full bg-slate-100 py-4 rounded-2xl font-bold">ログイン画面に戻る</button>
             </div>
-            
+
             <p id="auth-error" class="text-red-500 mt-8 text-xs font-bold hidden bg-red-50 p-4 rounded-2xl border border-red-100 text-center"></p>
         </div>
     </div>
@@ -254,20 +254,20 @@
          * NOTE: Replace this with your deployed Google Apps Script Web App URL.
          * The script source can be found in /gas/user-management.gs
          */
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/.../exec"; 
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/.../exec";
 
         // Global functions
         window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('sidebar-hidden');
-        
+
         window.switchView = (viewId) => {
             document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
             document.getElementById(`view-${viewId}`).classList.remove('hidden');
-            
+
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
             document.querySelector(`[data-view="${viewId}"]`).classList.add('active-nav');
-            
+
             document.getElementById('view-title').innerText = document.querySelector(`[data-view="${viewId}"] span:last-child`).innerText;
-            
+
             if (viewId === 'bus-stops' && !map) initMap();
             if (window.innerWidth < 768) toggleSidebar();
         };
@@ -348,14 +348,14 @@
             const grid = document.getElementById('bus-list-grid');
             const select = document.getElementById('editor-bus-select');
             const currentSelected = select.value;
-            
+
             grid.innerHTML = '';
             select.innerHTML = '<option value="">バスを選択してください</option>';
-            
+
             buses.forEach(bus => {
                 const name = bus.metadata ? window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey) : "未設定";
                 const vnum = bus.metadata ? window.Encryption.decrypt(bus.metadata.encryptedVehicleNumber, bus.encryptionKey) : "---";
-                
+
                 const card = document.createElement('div');
                 card.className = "bg-slate-50 p-6 rounded-[2rem] border border-slate-100 flex flex-col justify-between hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-300";
                 card.innerHTML = `
@@ -426,17 +426,17 @@
             map = L.map('map', { zoomControl: false }).setView([35.6812, 139.7671], 13);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            
+
             map.on('click', async (e) => {
                 const busId = document.getElementById('editor-bus-select').value;
                 if (!busId) return alert("まず編集対象のバスを選択してください");
                 const name = prompt("バス停の名称を入力してください");
                 if (!name) return;
-                
+
                 const bus = buses.find(b => b.id === busId);
                 const encName = window.Encryption.encrypt(name, bus.encryptionKey);
                 const encLoc = window.Encryption.encrypt(`${e.latlng.lat},${e.latlng.lng}`, bus.encryptionKey);
-                
+
                 await addDoc(collection(db, "busStops"), { busId, encryptedName: encName, encryptedLocation: encLoc, order: busStops.length });
             });
         }
@@ -525,10 +525,10 @@
             if (!map) return;
             markers.forEach(m => map.removeLayer(m));
             markers = [];
-            
+
             const busId = document.getElementById('editor-bus-select').value;
             const stops = busStops.filter(s => s.busId === busId);
-            
+
             if (stops.length > 0) {
                 const bounds = L.latLngBounds([]);
                 stops.forEach(stop => {
@@ -547,7 +547,7 @@
             const list = document.getElementById('bus-stops-list');
             const busId = document.getElementById('editor-bus-select').value;
             list.innerHTML = '';
-            
+
             if (!busId) {
                 list.innerHTML = '<div class="text-center py-10 text-slate-300 font-bold">バスを選択してください</div>';
                 return;
@@ -565,7 +565,7 @@
                 const div = document.createElement('div');
                 div.className = "p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center group hover:border-blue-200 transition-colors";
                 div.innerHTML = `
-                    <span class="font-bold text-slate-700">${name}</span> 
+                    <span class="font-bold text-slate-700">${name}</span>
                     <button onclick="deleteStop('${stop.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition">✕</button>
                 `;
                 list.appendChild(div);

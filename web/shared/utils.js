@@ -1,8 +1,8 @@
 /**
  * Global Configuration and Utilities
- * 
+ *
  * NOTE: The firebaseConfig below is the primary source of truth for all web/mobile components.
- * If you update it here, ensure it's also updated in the Service Worker (if applicable) 
+ * If you update it here, ensure it's also updated in the Service Worker (if applicable)
  * and mobile/cordova/www/js/utils.js.
  */
 

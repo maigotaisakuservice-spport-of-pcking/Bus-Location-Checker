@@ -9,11 +9,11 @@ service cloud.firestore {
     // Admins collection
     match /admins/{adminId} {
       allow read: if request.auth != null && request.auth.uid == adminId;
-      // Admin creation should be done via Firebase Console or a separate secure process 
-      // to avoid exposing secrets in client-side code. 
+      // Admin creation should be done via Firebase Console or a separate secure process
+      // to avoid exposing secrets in client-side code.
       // For initial setup, we allow the first admin if the collection is empty (optional)
       // but for production, recommend manual console entry.
-      allow create: if isAdmin(); 
+      allow create: if isAdmin();
       allow update, delete: if isAdmin() && request.auth.uid == adminId;
     }
 
@@ -39,13 +39,13 @@ service cloud.firestore {
 
     // WebRTC Signaling collection
     match /signaling/{docId} {
-      allow read, write: if request.auth != null; 
+      allow read, write: if request.auth != null;
     }
 
     // FCM Tokens for Push Notifications
     match /fcmTokens/{tokenId} {
       // Authenticated users can create/update their own tokens
-      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid; 
+      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid;
       allow read: if isAdmin();
     }
 
