@@ -118,12 +118,7 @@
                 <p class="text-slate-400 text-center mb-6 text-sm font-medium">Googleアカウントでログインして開始</p>
 
                 <div class="space-y-5">
-                    <button onclick="loginWithGoogle()" class="w-full bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-base flex items-center justify-center space-x-3 hover:bg-slate-50 transition-all shadow-sm">
-                        <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z"/></svg>
-                        <span>Googleでログイン</span>
-                    </button>
-
-                    <div id="registration-fields" class="hidden animate-fade-in space-y-5 pt-4 border-t border-slate-100">
+                    <div id="registration-fields" class="animate-fade-in space-y-5">
                         <p class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] text-center mb-2">初回登録 / 新規路線の追加</p>
                         <div class="group">
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">招待コード</label>
@@ -137,7 +132,15 @@
                             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">クラス名</label>
                             <input type="text" id="parent-class" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="ひまわり組">
                         </div>
-                        <button onclick="register()" class="w-full bg-red-500 text-white py-4 sm:py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">登録して開始</button>
+                        <button onclick="register()" class="w-full bg-red-500 text-white py-4 sm:py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">情報を入力して次へ</button>
+                    </div>
+
+                    <div id="google-auth-container" class="hidden animate-fade-in space-y-5 pt-4 border-t border-slate-100 text-center">
+                        <p class="text-xs font-bold text-slate-500">アカウントを連携して登録を完了します</p>
+                        <button onclick="loginWithGoogle()" class="w-full bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-base flex items-center justify-center space-x-3 hover:bg-slate-50 transition-all shadow-sm">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z"/></svg>
+                            <span>Googleでログインして登録完了</span>
+                        </button>
                     </div>
 
                     <p id="error" class="text-red-500 text-xs hidden text-center font-bold bg-red-50 p-4 rounded-2xl border border-red-100"></p>
@@ -245,8 +248,14 @@
         window.allAuths = JSON.parse(localStorage.getItem('user_auths')) || [];
         window.authData = window.allAuths[0];
 
+        let pendingRegistration = null;
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
+                if (pendingRegistration) {
+                    await finalizeRegistration(user);
+                    return;
+                }
                 const metaDoc = await getDoc(doc(db, "users_meta", user.uid));
                 if (metaDoc.exists()) {
                     const data = metaDoc.data();
@@ -255,11 +264,7 @@
                     if (window.allAuths.length > 0) {
                         window.authData = window.allAuths[0];
                         window.showMap();
-                    } else {
-                        document.getElementById('registration-fields').classList.remove('hidden');
                     }
-                } else {
-                    document.getElementById('registration-fields').classList.remove('hidden');
                 }
             }
         });
@@ -275,10 +280,6 @@
         };
 
         window.register = async () => {
-            if (!auth.currentUser) {
-                alert("まずGoogleでログインしてください");
-                return;
-            }
             const code = document.getElementById('invite-code').value.trim();
             const name = document.getElementById('parent-name').value.trim();
             const cls = document.getElementById('parent-class').value.trim();
@@ -291,11 +292,25 @@
                 return;
             }
 
+            document.getElementById('error').classList.add('hidden');
+            pendingRegistration = { code, name, cls, decoded };
+            document.getElementById('registration-fields').classList.add('hidden');
+            document.getElementById('google-auth-container').classList.remove('hidden');
+
+            if (auth.currentUser) {
+                finalizeRegistration(auth.currentUser);
+            }
+        };
+
+        async function finalizeRegistration(user) {
+            const { code, name, cls, decoded } = pendingRegistration;
+            pendingRegistration = null;
+
             try {
                 const now = new Date();
                 const year = now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
 
-                const metaRef = doc(db, "users_meta", auth.currentUser.uid);
+                const metaRef = doc(db, "users_meta", user.uid);
                 const metaSnap = await getDoc(metaRef);
                 let registeredBuses = metaSnap.exists() ? (metaSnap.data().registeredBuses || []) : [];
 
@@ -312,9 +327,8 @@
                 }, { merge: true });
 
                 await setDoc(doc(db, "config", "fiscalYears"), { [year]: true }, { merge: true });
-                // Save specific record for user management
                 await addDoc(collection(db, "users"), {
-                    uid: auth.currentUser.uid,
+                    uid: user.uid,
                     busId: decoded.busId,
                     encryptedName: window.Encryption.encrypt(name, decoded.key),
                     encryptedClass: window.Encryption.encrypt(cls, decoded.key),
@@ -327,11 +341,11 @@
                 window.authData = decoded;
                 window.showMap();
             } catch (e) {
-                console.error("Register error:", e);
+                console.error("Finalize error:", e);
                 document.getElementById('error').innerText = "登録に失敗しました";
                 document.getElementById('error').classList.remove('hidden');
             }
-        };
+        }
 
         window.logout = async () => {
             if (confirm("ログアウトしますか？")) {
@@ -601,28 +615,41 @@
             let closestIdx = -1;
             let minDist = Infinity;
             points.forEach((p, i) => {
-                const d = map.distance(p, currentBusPos);
+                const d = map.distance(L.latLng(p[0], p[1]), currentBusPos);
                 if (d < minDist) { minDist = d; closestIdx = i; }
             });
 
             // Threshold logic for stops (10m)
+            // We use a sticky "arrived" state to handle the 10m enter/exit logic accurately
+            if (!window.stopStatus) window.stopStatus = {};
+
             let lastPassedStopIdx = -1;
             masterRoutePoints.forEach((sp, si) => {
-                const d = map.distance(sp, currentBusPos);
-                if (d < 10) {
-                    // Mark as arrived/passing if within 10m
+                const d = map.distance(L.latLng(sp[0], sp[1]), currentBusPos);
+                const stopId = stopsMarkers[si]?.stopId;
+
+                if (d <= 10) {
+                    window.stopStatus[stopId] = 'arrived';
                     lastPassedStopIdx = si;
                 } else {
-                    // If we've already passed the point's index in the detailed path
-                    // we can assume it's passed.
-                    let stopInDetailedIdx = -1;
-                    let minSDist = Infinity;
-                    points.forEach((dp, di) => {
-                        const sd = map.distance(dp, sp);
-                        if (sd < minSDist) { minSDist = sd; stopInDetailedIdx = di; }
-                    });
-                    if (closestIdx > stopInDetailedIdx) {
+                    if (window.stopStatus[stopId] === 'arrived') {
+                        window.stopStatus[stopId] = 'passed';
+                    }
+
+                    if (window.stopStatus[stopId] === 'passed') {
                         lastPassedStopIdx = si;
+                    } else {
+                        // Fallback: If the bus is significantly past the stop in the detailed path
+                        let stopInDetailedIdx = -1;
+                        let minSDist = Infinity;
+                        points.forEach((dp, di) => {
+                            const sd = map.distance(L.latLng(dp[0], dp[1]), L.latLng(sp[0], sp[1]));
+                            if (sd < minSDist) { minSDist = sd; stopInDetailedIdx = di; }
+                        });
+                        if (closestIdx > stopInDetailedIdx + 5) { // 5-point buffer for detail
+                            lastPassedStopIdx = si;
+                            window.stopStatus[stopId] = 'passed';
+                        }
                     }
                 }
             });
