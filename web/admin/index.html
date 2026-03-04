@@ -7,10 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="../shared/utils.js"></script>
     <style>
         #map { height: 400px; border-radius: 1.5rem; z-index: 10; }
+        .leaflet-routing-container { display: none !important; }
         .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         @media (max-width: 768px) {
             .sidebar-hidden { transform: translateX(-100%); }
@@ -107,7 +110,7 @@
                             <p class="text-slate-400 text-xs font-black uppercase tracking-widest mb-3">一斉連絡・緊急テロップ（バス個別設定）</p>
                             <div class="flex flex-col space-y-4">
                                 <div class="flex space-x-3">
-                                    <select id="msg-bus-select" class="bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-blue-500 transition">
+                                    <select id="msg-bus-select" class="bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-blue-500 transition" onchange="updateMessageInput()">
                                         <option value="global">全てのバスに一斉送信</option>
                                     </select>
                                     <input type="text" id="emergency-msg-input" class="flex-1 bg-slate-50 p-4 rounded-2xl border outline-none" placeholder="例：雪のため15分遅延しています">
@@ -266,6 +269,53 @@
         </div>
     </div>
 
+    <!-- Bus Settings Modal -->
+    <div id="bus-settings-modal" class="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="max-w-md w-full bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl relative">
+            <button onclick="closeBusSettings()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition text-xl">✕</button>
+            <h2 class="text-xl font-black mb-6 text-slate-800">路線詳細設定</h2>
+
+            <div class="space-y-6">
+                <input type="hidden" id="edit-bus-id">
+                <div class="group">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">路線名</label>
+                    <input type="text" id="edit-bus-name" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-blue-500 transition font-bold">
+                </div>
+                <div class="group">
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">車両番号</label>
+                    <input type="text" id="edit-bus-vnum" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-200 outline-none focus:border-blue-500 transition font-bold">
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div>
+                        <p class="text-sm font-black text-slate-700">道路に吸着</p>
+                        <p class="text-[10px] text-slate-400 font-bold">バス停設置時に最寄りの道路へ移動</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="edit-bus-snap" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div>
+                        <p class="text-sm font-black text-slate-700">運行停止</p>
+                        <p class="text-[10px] text-slate-400 font-bold">保護者アプリで「停止中」と表示</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="edit-bus-force-stop" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    </label>
+                </div>
+
+                <div class="flex gap-3 pt-4">
+                    <button onclick="saveBusSettings()" class="flex-1 bg-blue-600 text-white py-4 rounded-2xl font-black shadow-lg shadow-blue-200 hover:bg-blue-700 transition">保存する</button>
+                    <button onclick="deleteBusConfirmed()" class="px-6 bg-red-50 text-red-500 rounded-2xl font-black hover:bg-red-100 transition">削除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="auth-modal" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
@@ -316,7 +366,7 @@
         let buses = [];
         let busStops = [];
         let users = [];
-        let map, markers = [];
+        let map, markers = [], routingControl = null;
 
         /**
          * NOTE: Replace this with your deployed Google Apps Script Web App URL.
@@ -461,6 +511,7 @@
                 optMsg.innerText = name;
                 msgSelect.appendChild(optMsg);
             });
+            updateMessageInput();
         }
 
         function updateYearFilter() {
@@ -522,14 +573,32 @@
             map.on('click', async (e) => {
                 const busId = document.getElementById('editor-bus-select').value;
                 if (!busId) return alert("まず編集対象のバスを選択してください");
+
+                const bus = buses.find(b => b.id === busId);
+                let finalLat = e.latlng.lat;
+                let finalLng = e.latlng.lng;
+
+                // Snap to road if enabled
+                if (bus.config?.snapToRoad !== false) {
+                    try {
+                        const res = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${e.latlng.lng},${e.latlng.lat}`);
+                        const data = await res.json();
+                        if (data.waypoints && data.waypoints[0]) {
+                            [finalLng, finalLat] = data.waypoints[0].location;
+                        }
+                    } catch (err) { console.error("Snap to road failed", err); }
+                }
+
                 const name = prompt("バス停の名称を入力してください");
                 if (!name) return;
 
-                const bus = buses.find(b => b.id === busId);
                 const encName = window.Encryption.encrypt(name, bus.encryptionKey);
-                const encLoc = window.Encryption.encrypt(`${e.latlng.lat},${e.latlng.lng}`, bus.encryptionKey);
+                const encLoc = window.Encryption.encrypt(`${finalLat},${finalLng}`, bus.encryptionKey);
 
-                await addDoc(collection(db, "busStops"), { busId, encryptedName: encName, encryptedLocation: encLoc, order: busStops.length });
+                const stopsInBus = busStops.filter(s => s.busId === busId);
+                const maxOrder = stopsInBus.reduce((max, s) => Math.max(max, s.order || 0), -1);
+
+                await addDoc(collection(db, "busStops"), { busId, encryptedName: encName, encryptedLocation: encLoc, order: maxOrder + 1 });
             });
         }
 
@@ -607,13 +676,26 @@
             alert("メッセージを消去しました");
         };
 
+        window.updateMessageInput = async () => {
+            const busId = document.getElementById('msg-bus-select').value;
+            const input = document.getElementById('emergency-msg-input');
+
+            if (busId === 'global') {
+                const snap = await getDoc(doc(db, "config", "broadcast"));
+                input.value = (snap.exists() && snap.data().message) ? snap.data().message : "";
+            } else {
+                const bus = buses.find(b => b.id === busId);
+                input.value = (bus && bus.status && bus.status.emergencyMessage) ? bus.status.emergencyMessage : "";
+            }
+        };
+
         window.addBus = async () => {
             const name = prompt("路線の名称を入力（例：青ルート）");
             const vnum = prompt("車両番号を入力（例：世田谷 200 あ 12-34）");
             if (!name || !vnum) return;
             const key = window.Encryption.generateKey();
             await addDoc(collection(db, "buses"), {
-                config: { interval: 10, forceStop: false },
+                config: { interval: 10, forceStop: false, snapToRoad: true },
                 metadata: {
                     encryptedRouteName: window.Encryption.encrypt(name, key),
                     encryptedVehicleNumber: window.Encryption.encrypt(vnum, key)
@@ -623,22 +705,52 @@
             });
         };
 
-        window.editBus = async (id) => {
+        window.editBus = (id) => {
             const bus = buses.find(b => b.id === id);
-            const name = prompt("路線の名称を変更", window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey));
-            if (!name) return;
+            if (!bus) return;
 
-            const doDelete = confirm("この路線（バス）を完全に削除しますか？\n※関連するバス停データも削除されます。");
-            if (doDelete) {
-                // Bulk delete stops
+            document.getElementById('edit-bus-id').value = id;
+            document.getElementById('edit-bus-name').value = window.Encryption.decrypt(bus.metadata.encryptedRouteName, bus.encryptionKey);
+            document.getElementById('edit-bus-vnum').value = window.Encryption.decrypt(bus.metadata.encryptedVehicleNumber, bus.encryptionKey);
+            document.getElementById('edit-bus-snap').checked = bus.config?.snapToRoad !== false;
+            document.getElementById('edit-bus-force-stop').checked = !!bus.config?.forceStop;
+
+            document.getElementById('bus-settings-modal').classList.remove('hidden');
+        };
+
+        window.closeBusSettings = () => {
+            document.getElementById('bus-settings-modal').classList.add('hidden');
+        };
+
+        window.saveBusSettings = async () => {
+            const id = document.getElementById('edit-bus-id').value;
+            const name = document.getElementById('edit-bus-name').value.trim();
+            const vnum = document.getElementById('edit-bus-vnum').value.trim();
+            const snap = document.getElementById('edit-bus-snap').checked;
+            const force = document.getElementById('edit-bus-force-stop').checked;
+
+            if (!name || !vnum) return alert("必須項目を入力してください");
+
+            const bus = buses.find(b => b.id === id);
+            await updateDoc(doc(db, "buses", id), {
+                "metadata.encryptedRouteName": window.Encryption.encrypt(name, bus.encryptionKey),
+                "metadata.encryptedVehicleNumber": window.Encryption.encrypt(vnum, bus.encryptionKey),
+                "config.snapToRoad": snap,
+                "config.forceStop": force
+            });
+
+            closeBusSettings();
+            alert("設定を保存しました");
+        };
+
+        window.deleteBusConfirmed = async () => {
+            const id = document.getElementById('edit-bus-id').value;
+            if (confirm("この路線（バス）を完全に削除しますか？\n※関連するバス停データも削除されます。")) {
                 const stops = busStops.filter(s => s.busId === id);
                 for (const s of stops) await deleteDoc(doc(db, "busStops", s.id));
                 await deleteDoc(doc(db, "buses", id));
+                closeBusSettings();
                 alert("路線を削除しました");
-            } else {
-                await updateDoc(doc(db, "buses", id), {
-                    "metadata.encryptedRouteName": window.Encryption.encrypt(name, bus.encryptionKey)
-                });
             }
         };
 
@@ -652,12 +764,17 @@
             if (!map) return;
             markers.forEach(m => map.removeLayer(m));
             markers = [];
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
 
             const busId = document.getElementById('editor-bus-select').value;
-            const stops = busStops.filter(s => s.busId === busId);
+            const stops = busStops.filter(s => s.busId === busId).sort((a, b) => (a.order || 0) - (b.order || 0));
 
             if (stops.length > 0) {
                 const bounds = L.latLngBounds([]);
+                const waypoints = [];
                 stops.forEach(stop => {
                     const bus = buses.find(b => b.id === stop.busId);
                     const name = window.Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
@@ -665,7 +782,23 @@
                     const m = L.marker([lat, lng]).addTo(map).bindPopup(`<div class="font-black p-1">${name}</div>`);
                     markers.push(m);
                     bounds.extend([lat, lng]);
+                    waypoints.push(L.latLng(lat, lng));
                 });
+
+                if (waypoints.length >= 2) {
+                    routingControl = L.Routing.control({
+                        waypoints: waypoints,
+                        createMarker: () => null, // Markers already handled
+                        routeWhileDragging: false,
+                        addWaypoints: false,
+                        draggableWaypoints: false,
+                        lineOptions: {
+                            styles: [{ color: '#6366f1', opacity: 0.6, weight: 6 }]
+                        },
+                        show: false // Hide instructions panel
+                    }).addTo(map);
+                }
+
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
@@ -686,7 +819,7 @@
                 return;
             }
 
-            stops.forEach(stop => {
+            stops.forEach((stop, idx) => {
                 const bus = buses.find(b => b.id === busId);
                 const name = window.Encryption.decrypt(stop.encryptedName, bus.encryptionKey);
                 const loc = window.Encryption.decrypt(stop.encryptedLocation, bus.encryptionKey).split(',').map(Number);
@@ -697,7 +830,13 @@
                     markers.find(m => m.getLatLng().lat === loc[0] && m.getLatLng().lng === loc[1])?.openPopup();
                 };
                 div.innerHTML = `
-                    <span class="font-bold text-slate-700">${name}</span>
+                    <div class="flex items-center space-x-3">
+                        <div class="flex flex-col space-y-1">
+                            <button onclick="event.stopPropagation(); moveStop('${stop.id}', -1)" class="text-[10px] text-slate-400 hover:text-blue-500 transition ${idx === 0 ? 'invisible' : ''}">▲</button>
+                            <button onclick="event.stopPropagation(); moveStop('${stop.id}', 1)" class="text-[10px] text-slate-400 hover:text-blue-500 transition ${idx === stops.length - 1 ? 'invisible' : ''}">▼</button>
+                        </div>
+                        <span class="font-bold text-slate-700">${name}</span>
+                    </div>
                     <button onclick="event.stopPropagation(); deleteStop('${stop.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:bg-red-50 hover:text-red-500 transition">✕</button>
                 `;
                 list.appendChild(div);
@@ -706,6 +845,26 @@
 
         window.deleteStop = async (id) => {
             if (confirm("このバス停を削除しますか？")) await deleteDoc(doc(db, "busStops", id));
+        };
+
+        window.moveStop = async (id, direction) => {
+            const busId = document.getElementById('editor-bus-select').value;
+            const stops = busStops.filter(s => s.busId === busId).sort((a, b) => (a.order || 0) - (b.order || 0));
+            const idx = stops.findIndex(s => s.id === id);
+            if (idx === -1) return;
+
+            const targetIdx = idx + direction;
+            if (targetIdx < 0 || targetIdx >= stops.length) return;
+
+            const currentStop = stops[idx];
+            const targetStop = stops[targetIdx];
+
+            // Swap orders
+            const currentOrder = currentStop.order || 0;
+            const targetOrder = targetStop.order || 0;
+
+            await updateDoc(doc(db, "busStops", currentStop.id), { order: targetOrder });
+            await updateDoc(doc(db, "busStops", targetStop.id), { order: currentOrder });
         };
 
         window.refreshMap = () => {

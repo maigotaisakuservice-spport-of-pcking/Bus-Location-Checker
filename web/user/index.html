@@ -7,10 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="../shared/utils.js"></script>
     <style>
         #map { height: 100vh; width: 100%; z-index: 1; }
+        .leaflet-routing-container { display: none !important; }
         .leaflet-container { font-family: inherit; }
 
         .custom-bus-icon {
@@ -252,7 +255,7 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        let map, busMarker, stopsMarkers = [], routePolyline, passedPolyline;
+        let map, busMarker, stopsMarkers = [], routePolyline, passedPolyline, routingControl;
         let currentBusPos = null;
         let isAutoFollow = true;
         let pc = null;
@@ -618,25 +621,25 @@
             updateRouteStyles();
         };
 
-        async function fetchRoute(points) {
-            if (points.length < 2) return points;
-            const coords = points.map(p => `${p[1]},${p[0]}`).join(';');
-            try {
-                const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-                const data = await res.json();
-                if (data.routes && data.routes[0]) {
-                    return data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                }
-            } catch (e) { console.error("OSRM failed", e); }
-            return points;
-        }
-
         let detailedRoutePoints = [];
 
         async function updateDetailedRoute() {
             if (masterRoutePoints.length < 2) return;
-            detailedRoutePoints = await fetchRoute(masterRoutePoints);
-            updateRouteStyles();
+
+            if (routingControl) map.removeControl(routingControl);
+
+            routingControl = L.Routing.control({
+                waypoints: masterRoutePoints.map(p => L.latLng(p[0], p[1])),
+                createMarker: () => null,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: false,
+                lineOptions: { styles: [{ opacity: 0 }] } // Hidden line, we draw it ourselves
+            }).on('routesfound', (e) => {
+                const route = e.routes[0];
+                detailedRoutePoints = route.coordinates.map(c => [c.lat, c.lng]);
+                updateRouteStyles();
+            }).addTo(map);
         }
 
         function updateRouteStyles() {
