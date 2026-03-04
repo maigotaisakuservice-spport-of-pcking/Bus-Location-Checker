@@ -544,14 +544,23 @@
 
         async function callGASDelete(uids) {
             try {
-                await fetch(GAS_WEB_APP_URL, {
+                // If the GAS Web App URL is still the placeholder, skip fetch
+                if (GAS_WEB_APP_URL.includes("...")) {
+                    console.warn("GAS Web App URL not configured. Data deleted in Firestore, but Auth account may remain.");
+                    return;
+                }
+
+                const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'deleteUsers', uids })
                 });
+
+                // GAS might return CORS errors if not handled, but we attempt to parse
+                const result = await response.json();
+                console.log("GAS Response:", result);
             } catch (e) {
-                console.error("GAS call failed", e);
+                console.error("GAS call failed (this might be expected if CORS is not configured in GAS):", e);
             }
         }
 

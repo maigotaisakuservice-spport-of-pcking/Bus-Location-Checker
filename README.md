@@ -44,10 +44,16 @@
 - **補完ロジック**: GPS の瞬き等で 10m 判定を逃した場合でも、OSRM の詳細ルート上のインデックスを監視し、バス停を一定以上通り過ぎた場合に自動的に「通過済み」に切り替えます。
 
 ### ユーザー削除システム (GAS)
-管理者がユーザーを削除すると、Google Apps Script (GAS) 経由で以下の処理が実行されます：
-1. `Firebase Auth` からのアカウント物理削除。
-2. `Firestore` 上の `users` および `users_meta` ドキュメントの完全削除。
+管理者がユーザーを削除すると、Google Apps Script (GAS) 経由で `Firebase Auth` からのアカウント物理削除が実行されます。
 ※ GAS の Web App URL は管理者画面の `GAS_WEB_APP_URL` に設定する必要があります。
+
+#### GAS セットアップ手順:
+1. Google Apps Script エディタを開き、`gas/user-management.gs` の内容を貼り付けます。
+2. ライブラリに `OAuth2` (ID: `1B7_5jkDshY_g_8vAk6SkZp09S_UvIjw7on7sl41IdXmYfS_Z_Oa0C8E`) を追加します。
+3. GCP コンソールでサービスアカウントを作成し、`Identity Toolkit API` の権限を付与します。
+4. JSON キーを作成し、そのメールアドレスと秘密鍵をスクリプト内の `CLIENT_EMAIL` と `PRIVATE_KEY` に記入します。
+5. 「デプロイ > 新しいデプロイ」を選択し、種類を「ウェブアプリ」、アクセスできるユーザーを「全員」にしてデプロイします。
+6. 発行された URL を `web/admin/index.html` の `GAS_WEB_APP_URL` に設定します。
 
 ---
 
