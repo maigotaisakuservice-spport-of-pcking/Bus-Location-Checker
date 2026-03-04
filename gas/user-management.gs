@@ -4,8 +4,8 @@
  */
 
 const FIREBASE_PROJECT_ID = "bus-location-checker-service";
-// TODO: Replace with your actual domain (e.g., "https://your-name.github.io")
-const ALLOWED_DOMAIN = "https://your-name.github.io";
+// TODO: Replace with your actual domain (e.g., "https://maigotaisakuservice-spport-of-pcking.github.io")
+const ALLOWED_DOMAIN = "https://maigotaisakuservice-spport-of-pcking.github.io";
 
 function doPost(e) {
   let params;
