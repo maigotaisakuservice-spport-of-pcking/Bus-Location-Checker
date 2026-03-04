@@ -71,12 +71,15 @@
                     </button>
                     <h1 id="view-title" class="text-xl md:text-2xl font-black text-slate-800">ダッシュボード</h1>
                 </div>
-                <div id="admin-info-container" class="flex items-center space-x-4">
+                <div id="admin-info-container" class="flex items-center space-x-2 md:space-x-4">
+                    <button onclick="openHelp()" class="w-10 h-10 md:w-12 md:h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-lg md:text-xl hover:bg-slate-200 transition shadow-sm group">
+                        <span class="group-hover:scale-110 transition-transform">❓</span>
+                    </button>
                     <div class="hidden md:block text-right">
                         <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">管理者アカウント</p>
                         <p class="text-sm font-bold text-slate-600" id="admin-email">---</p>
                     </div>
-                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-200">A</div>
+                    <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-black shadow-lg shadow-blue-200">A</div>
                 </div>
             </header>
 
@@ -206,6 +209,49 @@
     </div>
 
     <!-- Modals -->
+    <div id="help-modal" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="max-w-2xl w-full bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeHelp()" class="absolute top-8 right-8 text-slate-400 hover:text-slate-600 transition text-2xl">✕</button>
+            <h2 class="text-2xl font-black mb-8 text-slate-800 flex items-center">
+                <span class="mr-3 text-3xl">❓</span> 管理者ヘルプガイド
+            </h2>
+
+            <div class="space-y-8 text-sm leading-relaxed text-slate-600">
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 路線(バス)の追加
+                    </h3>
+                    <p>「ダッシュボード」の「新規路線を追加」から、新しいバスを登録します。登録時に発行される<b>招待コード</b>を保護者に配布してください。</p>
+                </section>
+
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 停留所の管理
+                    </h3>
+                    <p>「バス停・ルート」画面で対象のバスを選択し、<b>地図上をクリック</b>して停留所を追加します。停留所リストをクリックすると、地図がその場所にジャンプします。</p>
+                </section>
+
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 緊急連絡の配信
+                    </h3>
+                    <p>ダッシュボード上部の入力欄から、保護者アプリに流れるテロップを編集できます。「全車共通」か「特定のバス」かを選択して反映してください。</p>
+                </section>
+
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> ユーザーの整理
+                    </h3>
+                    <p>「ユーザー管理」画面で、年度フィルタリングを使用して卒業生などの古いデータを一括削除できます。削除すると、Googleアカウント連携も解除されます。</p>
+                </section>
+            </div>
+
+            <button onclick="closeHelp()" class="mt-10 w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition">
+                閉じる
+            </button>
+        </div>
+    </div>
+
     <div id="auth-modal" class="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4">
         <div class="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl relative overflow-hidden">
             <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
@@ -266,6 +312,8 @@
 
         // Global functions
         window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('sidebar-hidden');
+        window.openHelp = () => document.getElementById('help-modal').classList.remove('hidden');
+        window.closeHelp = () => document.getElementById('help-modal').classList.add('hidden');
 
         window.switchView = (viewId) => {
             document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
