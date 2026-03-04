@@ -14,6 +14,32 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+        /* Encryption Animation Styles */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes flow {
+            0% { left: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        .animate-float { animation: float 3s ease-in-out infinite; }
+        .data-particle {
+            position: absolute;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3b82f6;
+            animation: flow 4s linear infinite;
+        }
+        .scrambled {
+            font-family: monospace;
+            filter: blur(1px);
+        }
     </style>
 </head>
 <body class="bg-white text-slate-900 overflow-x-hidden">
@@ -65,6 +91,104 @@
                     <div class="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-8">🔒</div>
                     <h3 class="text-xl font-black mb-4">プライバシー保護</h3>
                     <p class="text-slate-500 text-sm leading-relaxed">AES-256によるエンドツーエンド暗号化（E2EE）を実装。位置情報や個人情報は送信前に端末内で暗号化され、サーバー側でも解読不能な状態で管理されます。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Encryption Animation Section -->
+    <section class="py-24 px-6 overflow-hidden">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-6">強固なセキュリティ: E2EE</h2>
+                <p class="text-slate-500 font-bold max-w-2xl mx-auto">
+                    AES-256による「エンドツーエンド暗号化」により、位置情報や個人情報は送信前にデバイス内で暗号化されます。
+                </p>
+            </div>
+
+            <div class="relative bg-slate-900 rounded-[3rem] p-8 md:p-16 text-white shadow-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12 items-center relative z-10">
+                    <!-- Sender Side -->
+                    <div class="text-center space-y-4">
+                        <div class="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-lg animate-float">
+                            <i class="fas fa-bus"></i>
+                        </div>
+                        <p class="font-black">バス (送信元)</p>
+                        <div class="bg-white/10 p-4 rounded-2xl text-[10px] text-left border border-white/10 backdrop-blur-sm">
+                            <p class="text-blue-400 font-bold mb-1">RAW DATA</p>
+                            <p>緯度: 35.6812</p>
+                            <p>経度: 139.7671</p>
+                            <p>速度: 25km/h</p>
+                        </div>
+                        <div class="flex justify-center text-yellow-400 animate-pulse">
+                            <i class="fas fa-lock mr-2"></i>
+                            <span class="text-xs font-black uppercase">Device Encryption</span>
+                        </div>
+                    </div>
+
+                    <!-- Cloud -->
+                    <div class="text-center space-y-6 relative">
+                        <div class="w-24 h-24 bg-white/5 rounded-full mx-auto flex items-center justify-center text-5xl border border-white/10 backdrop-blur-xl">
+                            <i class="fas fa-cloud text-slate-500"></i>
+                        </div>
+                        <p class="text-slate-400 font-bold">クラウドサーバー</p>
+                        <div class="bg-red-500/10 p-4 rounded-2xl text-[10px] text-center border border-red-500/20 scrambled text-red-400">
+                            U2FsdGVkX1+vGz8...<br>
+                            (解読不能なデータ)
+                        </div>
+                        <p class="text-[10px] text-slate-500 italic">サーバー運営者でも中身は見られません</p>
+
+                        <!-- Flow Lines -->
+                        <div class="hidden md:block absolute top-1/2 left-[-50%] w-full h-1 pointer-events-none">
+                            <div class="data-particle" style="animation-delay: 0s"></div>
+                            <div class="data-particle" style="animation-delay: 1s; background: #fbbf24"></div>
+                            <div class="data-particle" style="animation-delay: 2s"></div>
+                        </div>
+                        <div class="hidden md:block absolute top-1/2 left-[50%] w-full h-1 pointer-events-none">
+                            <div class="data-particle" style="animation-delay: 0.5s"></div>
+                            <div class="data-particle" style="animation-delay: 1.5s; background: #fbbf24"></div>
+                        </div>
+                    </div>
+
+                    <!-- Receiver Side -->
+                    <div class="text-center space-y-4">
+                        <div class="w-20 h-20 bg-green-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-lg animate-float" style="animation-delay: 1.5s">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                        <p class="font-black">保護者 (受信先)</p>
+                        <div class="bg-white/10 p-4 rounded-2xl text-[10px] text-left border border-white/10 backdrop-blur-sm">
+                            <p class="text-green-400 font-bold mb-1">DECRYPTED</p>
+                            <p>到着予定: あと3分</p>
+                            <p>距離: 800m</p>
+                        </div>
+                        <div class="flex justify-center text-green-400">
+                            <i class="fas fa-key mr-2"></i>
+                            <span class="text-xs font-black uppercase">Decrypted on Device</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Abstract background elements -->
+                <div class="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+                    <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-600 rounded-full blur-[100px]"></div>
+                    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-indigo-600 rounded-full blur-[100px]"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center font-bold">1</div>
+                    <div>
+                        <h4 class="font-black mb-2">秘密鍵は端末内にのみ存在</h4>
+                        <p class="text-slate-500 text-sm">暗号化に必要な秘密鍵は、利用開始時の「招待コード」から生成され、利用者のブラウザ内（localStorage）にのみ安全に保管されます。ネットワーク上を流れることはありません。</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center font-bold">2</div>
+                    <div>
+                        <h4 class="font-black mb-2">軍事レベルの暗号規格</h4>
+                        <p class="text-slate-500 text-sm">米国政府も採用する暗号化規格「AES-256」を採用。現在のスーパーコンピュータでも数億年かかると言われる強度でデータを守ります。</p>
+                    </div>
                 </div>
             </div>
         </div>
