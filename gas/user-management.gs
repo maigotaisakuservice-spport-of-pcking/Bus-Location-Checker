@@ -4,8 +4,8 @@
  */
 
 const FIREBASE_PROJECT_ID = "bus-location-checker-service";
-// TODO: Replace with your actual domain (e.g., "https://maigotaisakuservice-spport-of-pcking.github.io")
-const ALLOWED_DOMAIN = "https://maigotaisakuservice-spport-of-pcking.github.io";
+// Default set to '*' to allow requests from any origin for ease of deployment.
+const ALLOWED_DOMAIN = "*";
 
 function doPost(e) {
   let params;
