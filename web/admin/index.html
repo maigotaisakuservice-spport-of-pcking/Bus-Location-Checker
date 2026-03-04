@@ -209,7 +209,7 @@
     </div>
 
     <!-- Modals -->
-    <div id="help-modal" class="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div id="help-modal" class="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="max-w-2xl w-full bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeHelp()" class="absolute top-8 right-8 text-slate-400 hover:text-slate-600 transition text-2xl">✕</button>
             <h2 class="text-2xl font-black mb-8 text-slate-800 flex items-center">
@@ -219,30 +219,44 @@
             <div class="space-y-8 text-sm leading-relaxed text-slate-600">
                 <section>
                     <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 路線の作成と管理
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 1. 路線の作成と管理
                     </h3>
-                    <p>「ダッシュボード」の「新規路線を追加」から、バス名や年度を設定して登録します。作成後、停留所を追加してルートを構築します。登録時に発行される<b>招待コード</b>を保護者に配布してください。</p>
+                    <p>「ダッシュボード」画面の「＋ 新規路線を追加」ボタンからバス名（例：青ルート）や年度を設定します。作成した路線ごとに固有の<b>招待コード</b>が発行されますので、これを保護者に配布してください。</p>
+                    <p class="mt-2 text-xs text-slate-400">※ 路線を削除すると、その路線に紐づく停留所データもすべて削除されますのでご注意ください。</p>
                 </section>
 
                 <section>
                     <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 停留所の配置
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 2. 停留所の配置とルート構築
                     </h3>
-                    <p>「バス停・ルート」画面で対象のバスを選択し、<b>地図上の好きな場所をクリック</b>して停留所を追加します。マーカーをドラッグして微調整し、リストの順序を入れ替えることで巡回ルートが確定します。</p>
+                    <p>「バス停・ルート」画面で編集したいバスを選択し、<b>地図上の停留所を設置したい場所を直接クリック</b>します。名称を入力するとマーカーが設置されます。</p>
+                    <p class="mt-2">リストの順序に従って巡回ルートが自動的に計算され、保護者側のアプリに道路沿いの正確なルートとして表示されます。</p>
                 </section>
 
                 <section>
                     <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 緊急メッセージの配信
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 3. 緊急メッセージの配信
                     </h3>
-                    <p>ダッシュボード上部の入力欄から、保護者アプリに流れるテロップを編集できます。「全車共通」か「特定のバス」かを選択して反映してください（雪による遅延連絡など）。</p>
+                    <p>ダッシュボード上部の「一斉連絡・緊急テロップ」セクションから、保護者アプリの画面上部に流れるメッセージを編集できます。</p>
+                    <ul class="list-disc ml-5 mt-1 space-y-1">
+                        <li><b>全車共通:</b> すべてのバス利用者に同じ内容を表示（例：大雪による全便運休のお知らせ）。</li>
+                        <li><b>特定のバス:</b> 特定の路線のみに表示（例：1号車のみ15分遅延）。</li>
+                    </ul>
                 </section>
 
                 <section>
                     <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> ユーザーの整理
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 4. ユーザー管理と年度更新
                     </h3>
-                    <p>「ユーザー管理」画面で、年度フィルタリングを使用して卒業生などの古いデータを一括削除できます。削除すると、連携されたGoogleアカウント情報もクリーンアップされます。</p>
+                    <p>「ユーザー管理」画面では、現在登録されている保護者の一覧を確認できます。年度替わりの時期には、年度フィルターで対象年を選択し、「一括削除」を行うことで、不要になったアカウント情報をクリーンアップできます。</p>
+                    <p class="mt-2 text-xs text-slate-400">※ 削除を実行すると、保護者のGoogleアカウント連携も解除されます。</p>
+                </section>
+
+                <section class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                    <h3 class="font-bold text-blue-800 mb-2">💡 運用のアドバイス</h3>
+                    <p class="text-blue-700 text-xs leading-relaxed">
+                        バス側（運転手）の端末では、走行開始時に「走行開始」ボタンを押し、画面を点灯させたままにしてください。5分以上通信が途絶えると、保護者側には「時間外 / 停止中」として表示されます。
+                    </p>
                 </section>
             </div>
 
@@ -550,9 +564,10 @@
                     return;
                 }
 
+                // Using text/plain avoids CORS preflight OPTIONS request in GAS
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({ action: 'deleteUsers', uids })
                 });
 
