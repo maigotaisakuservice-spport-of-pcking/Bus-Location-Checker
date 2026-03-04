@@ -3,60 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>バス運行状況確認システム</title>
+    <title>バス運行状況確認システム | サービス紹介</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .glass-card {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen flex items-center justify-center p-6 font-sans">
-    <div class="max-w-md w-full glass-card p-10 rounded-[3rem] shadow-2xl border border-white text-center">
-        <div class="mb-10">
-            <div class="w-24 h-24 bg-blue-500 rounded-3xl mx-auto flex items-center justify-center text-5xl shadow-xl shadow-blue-200 mb-6">🚌</div>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight">バス運行状況確認</h1>
-            <p class="text-slate-400 mt-2 font-medium">ポータル画面</p>
+<body class="bg-white text-slate-900 overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200">🚌</div>
+                <span class="text-xl font-black tracking-tighter">BUS CHECKER</span>
+            </div>
+            <a href="login.html" class="bg-slate-900 text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-slate-800 transition shadow-lg">ご利用者様はこちら</a>
         </div>
+    </header>
 
-        <div class="space-y-4">
-            <button onclick="goToUser()" class="w-full bg-blue-600 text-white py-6 rounded-2xl font-black text-lg hover:bg-blue-700 transition shadow-lg shadow-blue-100 active:scale-95">
-                バス走行状況確認<br><span class="text-sm font-bold opacity-80">(保護者様用)</span>
-            </button>
-
-            <button onclick="goToAdmin()" class="w-full bg-white text-slate-600 py-6 rounded-2xl font-black text-lg border border-slate-200 hover:bg-slate-50 transition active:scale-95">
-                管理者ページ
-            </button>
-
-            <button onclick="location.href='guide.html'" class="w-full bg-slate-50 text-slate-400 py-4 rounded-2xl font-black text-sm border border-slate-100 hover:bg-slate-100 transition active:scale-95 flex items-center justify-center">
-                📖 使い方ガイド
-            </button>
+    <!-- Hero Section -->
+    <section class="pt-40 pb-20 px-6">
+        <div class="max-w-7xl mx-auto text-center">
+            <h1 class="text-5xl md:text-7xl font-black mb-8 leading-tight tracking-tight">
+                バスの「今」がわかる、<br><span class="gradient-text">安心を届ける。</span>
+            </h1>
+            <p class="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-medium">
+                幼稚園・保育園、スクールバスの運行状況をリアルタイムで共有。<br>
+                保護者の待ち時間を減らし、送迎のストレスを解消します。
+            </p>
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6">
+                <div class="bg-red-50 text-red-600 px-8 py-4 rounded-2xl font-black border border-red-100 flex items-center">
+                    <span class="mr-2">⚠️</span> 只今新規契約の受け付けを停止しています
+                </div>
+            </div>
         </div>
+    </section>
 
-        <p class="mt-10 text-[10px] text-slate-300 font-black uppercase tracking-widest">© 2024 Bus-Location-Checker</p>
-    </div>
+    <!-- Features -->
+    <section class="py-20 bg-slate-50 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-8">📍</div>
+                    <h3 class="text-xl font-black mb-4">リアルタイム位置</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">WebRTC技術により、地図上のバスが滑らかに動きます。遅延のない正確な位置情報を把握できます。</p>
+                </div>
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-8">🔔</div>
+                    <h3 class="text-xl font-black mb-4">到着通知</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">バス停への接近を自動検知。忙しい朝でも、スマホへの通知で適切なタイミングで準備ができます。</p>
+                </div>
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-8">🔒</div>
+                    <h3 class="text-xl font-black mb-4">プライバシー保護</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">AES-256によるエンドツーエンド暗号化を実装。位置情報や個人情報は高度に暗号化されます。</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-    <script>
-        function goToUser() {
-            window.location.href = 'web/user/index.html';
-        }
+    <!-- Pricing -->
+    <section class="py-24 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">ご利用プラン</h2>
+                <p class="text-slate-400 font-bold">ご利用形態に合わせた最適なプラン</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
+                <!-- Education Plan -->
+                <div class="bg-white p-10 rounded-[3rem] border-4 border-blue-600 relative overflow-hidden shadow-2xl">
+                    <div class="absolute top-0 right-0 bg-blue-600 text-white px-6 py-2 rounded-bl-2xl font-black text-xs">おすすめ</div>
+                    <h3 class="text-2xl font-black mb-2">教育機関プラン</h3>
+                    <p class="text-slate-400 text-sm mb-8 font-bold">幼稚園・保育園・小学校向け</p>
+                    <div class="mb-8">
+                        <span class="text-5xl font-black">¥0</span>
+                        <span class="text-slate-400 font-bold"> / 月</span>
+                    </div>
+                    <ul class="space-y-4 mb-10 text-sm font-bold text-slate-600">
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 複数路線の登録</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 保護者用アプリ利用</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 緊急テロップ配信</li>
+                    </ul>
+                    <div class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl text-center font-black text-sm">
+                        只今新規契約の受け付けを停止しています
+                    </div>
+                </div>
+                <!-- Company Plan -->
+                <div class="bg-slate-50 p-10 rounded-[3rem] border border-slate-200">
+                    <h3 class="text-2xl font-black mb-2">一般・法人プラン</h3>
+                    <p class="text-slate-400 text-sm mb-8 font-bold">民間バス・企業送迎向け</p>
+                    <div class="mb-8">
+                        <span class="text-5xl font-black">個別見積</span>
+                    </div>
+                    <ul class="space-y-4 mb-10 text-sm font-bold text-slate-600">
+                        <li class="flex items-center"><i class="fas fa-check text-blue-500 mr-3"></i> 高度な管理機能</li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-500 mr-3"></i> 独自ドメイン対応</li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-500 mr-3"></i> 優先サポート</li>
+                    </ul>
+                    <div class="w-full bg-slate-200 text-slate-400 py-4 rounded-2xl text-center font-black text-sm">
+                        只今新規契約を受け付けておりません
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-        function goToAdmin() {
-            const passcode = prompt("管理者用パスコードを入力してください:");
-            if (passcode === null) return;
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-20 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-10 md:mb-0">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg">🚌</div>
+                <span class="text-xl font-black tracking-tighter">BUS CHECKER</span>
+            </div>
+            <div class="flex space-x-10 text-slate-400 font-bold text-sm">
+                <a href="login.html" class="hover:text-white transition">ログイン</a>
+                <a href="guide.html" class="hover:text-white transition">使い方ガイド</a>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto mt-20 pt-10 border-t border-slate-800 text-center text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">
+            © 2024 Bus-Location-Checker. All Rights Reserved.
+        </div>
+    </footer>
 
-            const targetHash = "4d3b347af62a9629e575c6acac62aebfc993e254ddc3226a47cd6c8957535783";
-            const hashedInput = CryptoJS.SHA256(passcode).toString();
-
-            if (hashedInput === targetHash) {
-                window.location.href = 'web/admin/index.html';
-            } else {
-                alert("パスコードが正しくありません");
-            }
-        }
-    </script>
 </body>
 </html>

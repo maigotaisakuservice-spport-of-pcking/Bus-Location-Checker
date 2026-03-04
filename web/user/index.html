@@ -624,9 +624,13 @@
         let detailedRoutePoints = [];
 
         async function updateDetailedRoute() {
-            if (masterRoutePoints.length < 2) return;
-
             if (routingControl) map.removeControl(routingControl);
+
+            if (masterRoutePoints.length < 2) {
+                detailedRoutePoints = [];
+                updateRouteStyles();
+                return;
+            }
 
             routingControl = L.Routing.control({
                 waypoints: masterRoutePoints.map(p => L.latLng(p[0], p[1])),
