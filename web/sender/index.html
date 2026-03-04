@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>バス位置送信 - 運転手</title>
+    <title>Bus-Location-Checker - 運転手</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="../shared/utils.js"></script>
@@ -12,7 +12,7 @@
     <div id="app" class="max-w-md w-full bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
         <!-- Login -->
         <div id="login-section">
-            <h2 class="text-2xl font-black mb-6 text-center">位置送信ログイン</h2>
+            <h2 class="text-2xl font-black mb-6 text-center leading-tight">Bus-Location-Checker</h2>
             <div class="space-y-4">
                 <input type="text" id="invite-code" class="w-full p-4 bg-slate-700 rounded-2xl border border-slate-600 outline-none text-center text-lg" placeholder="招待コードを入力">
                 <button onclick="login()" class="w-full bg-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all">ログイン</button>
@@ -50,7 +50,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, updateDoc, getDoc, getDocs, serverTimestamp, collection, onSnapshot, addDoc, setDoc, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, updateDoc, getDoc, getDocs, serverTimestamp, collection, onSnapshot, addDoc, setDoc, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp(window.firebaseConfig);
         const db = getFirestore(app);
@@ -249,7 +249,7 @@
             document.getElementById('status-text').innerText = "送信中";
         }
 
-        function stopTracking() {
+        async function stopTracking() {
             if (watchId) {
                 navigator.geolocation.clearWatch(watchId);
                 watchId = null;
@@ -264,6 +264,25 @@
             btn.classList.replace('bg-red-600', 'bg-green-600');
             document.getElementById('status-text').innerText = "停止中";
             document.getElementById('status-ring').classList.replace('border-green-500', 'border-slate-700');
+
+            // Cleanup Firestore to save storage
+            try {
+                // Clear location status
+                await updateDoc(doc(db, "buses", authData.busId), {
+                    "status.encryptedLocation": "",
+                    "status.isActive": false
+                });
+
+                // Delete related signaling documents
+                const q = query(collection(db, "signaling"), where("busId", "==", authData.busId));
+                const snap = await getDocs(q);
+                const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
+                await Promise.all(deletePromises);
+
+                console.log("Cleanup complete");
+            } catch (e) {
+                console.error("Cleanup failed", e);
+            }
         }
 
         if (authData) showSender();
