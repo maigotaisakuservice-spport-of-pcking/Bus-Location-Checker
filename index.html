@@ -16,9 +16,19 @@
         }
 
         /* Encryption Animation Styles */
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+        @keyframes drive {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            25% { transform: translateY(-1px) translateX(0.5px); }
+            50% { transform: translateY(0) translateX(-0.5px); }
+            75% { transform: translateY(-0.5px) translateX(0.5px); }
+        }
+        @keyframes user-check {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(2deg); }
+        }
+        @keyframes phone-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(74, 222, 128, 0.9); }
         }
         @keyframes flow {
             0% { left: 0%; opacity: 0; }
@@ -26,7 +36,9 @@
             80% { opacity: 1; }
             100% { left: 100%; opacity: 0; }
         }
-        .animate-float { animation: float 3s ease-in-out infinite; }
+        .animate-drive { animation: drive 0.3s infinite linear; }
+        .animate-user-check { animation: user-check 3s ease-in-out infinite; }
+        .animate-phone-glow { animation: phone-glow 2s infinite; }
         .data-particle {
             position: absolute;
             top: 50%;
@@ -110,8 +122,10 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-12 items-center relative z-10">
                     <!-- Sender Side -->
                     <div class="text-center space-y-4">
-                        <div class="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-lg animate-float">
-                            <i class="fas fa-bus"></i>
+                        <div class="relative w-24 h-24 mx-auto">
+                            <div class="absolute inset-0 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-lg animate-drive">
+                                <i class="fas fa-bus"></i>
+                            </div>
                         </div>
                         <p class="font-black">バス (送信元)</p>
                         <div class="bg-white/10 p-4 rounded-2xl text-[10px] text-left border border-white/10 backdrop-blur-sm">
@@ -152,8 +166,13 @@
 
                     <!-- Receiver Side -->
                     <div class="text-center space-y-4">
-                        <div class="w-20 h-20 bg-green-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-lg animate-float" style="animation-delay: 1.5s">
-                            <i class="fas fa-user-graduate"></i>
+                        <div class="relative w-24 h-24 mx-auto">
+                            <div class="absolute inset-0 bg-green-600 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-lg animate-user-check">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-xl shadow-xl flex items-center justify-center text-green-600 border-2 border-green-500 animate-phone-glow">
+                                <i class="fas fa-mobile-alt text-lg"></i>
+                            </div>
                         </div>
                         <p class="font-black">保護者 (受信先)</p>
                         <div class="bg-white/10 p-4 rounded-2xl text-[10px] text-left border border-white/10 backdrop-blur-sm">
