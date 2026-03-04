@@ -1,16 +1,24 @@
 /**
  * Google Apps Script for handling Firebase Auth deletion and other administrative actions.
+ * This version does NOT require any external libraries.
  */
 
 const FIREBASE_PROJECT_ID = "bus-location-checker-service";
+// TODO: Replace with your actual domain (e.g., "https://your-name.github.io")
+const ALLOWED_DOMAIN = "https://your-name.github.io";
 
 function doPost(e) {
   let params;
   try {
     params = JSON.parse(e.postData.contents);
   } catch (err) {
-    // Fallback for form-encoded or other formats
     params = e.parameter;
+  }
+
+  // Domain Security Check
+  if (ALLOWED_DOMAIN !== "*" && params.origin !== ALLOWED_DOMAIN) {
+    Logger.log(`Unauthorized origin: ${params.origin}`);
+    return createJsonResponse({ status: 'error', message: 'Unauthorized domain access denied' });
   }
 
   const action = params.action;
@@ -23,12 +31,6 @@ function doPost(e) {
     }));
 
     return createJsonResponse({ status: 'ok', results });
-  }
-
-  if (action === 'sendNotification') {
-    // This is a placeholder for push notification logic
-    // Requires Firebase Cloud Messaging API access
-    return createJsonResponse({ status: 'ok', message: 'Notification triggered' });
   }
 
   return createJsonResponse({ status: 'error', message: 'Invalid action or missing parameters' });
@@ -64,9 +66,9 @@ function deleteFirebaseAuthUser(uid) {
 
 /**
  * PRODUCTION SETUP:
- * 1. Add "OAuth2" Library (Script ID: 1B7_5jkDshY_g_8vAk6SkZp09S_UvIjw7on7sl41IdXmYfS_Z_Oa0C8E)
- * 2. Create a Service Account in GCP, download the JSON key.
- * 3. Replace the CLIENT_EMAIL and PRIVATE_KEY placeholders below.
+ * 1. Create a Service Account in GCP (https://console.cloud.google.com/iam-admin/serviceaccounts)
+ * 2. Add "Firebase Authentication Admin" role.
+ * 3. Generate a JSON key and copy the values below.
  */
 function getServiceAccountToken() {
   const CLIENT_EMAIL = "firebase-adminsdk-xxxxx@xxxxx.iam.gserviceaccount.com";
@@ -77,11 +79,40 @@ function getServiceAccountToken() {
     return null;
   }
 
-  const service = OAuth2.createService('Firebase')
-    .setTokenUrl('https://oauth2.googleapis.com/token')
-    .setPrivateKey(PRIVATE_KEY)
-    .setIssuer(CLIENT_EMAIL)
-    .setScope('https://www.googleapis.com/auth/identitytoolkit');
+  const header = JSON.stringify({
+    alg: "RS256",
+    typ: "JWT"
+  });
 
-  return service.getAccessToken();
+  const now = Math.floor(Date.now() / 1000);
+  const claimSet = JSON.stringify({
+    iss: CLIENT_EMAIL,
+    scope: "https://www.googleapis.com/auth/identitytoolkit",
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now + 3600,
+    iat: now
+  });
+
+  const encode = (str) => Utilities.base64EncodeWebSafe(str).replace(/=+$/, '');
+  const toSign = encode(header) + "." + encode(claimSet);
+  const signature = Utilities.computeRsaSha256Signature(toSign, PRIVATE_KEY);
+  const jwt = toSign + "." + encode(signature);
+
+  const params = {
+    method: "post",
+    payload: {
+      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+      assertion: jwt
+    },
+    muteHttpExceptions: true
+  };
+
+  try {
+    const response = UrlFetchApp.fetch("https://oauth2.googleapis.com/token", params);
+    const data = JSON.parse(response.getContentText());
+    return data.access_token;
+  } catch (e) {
+    Logger.log("OAuth token error: " + e.message);
+    return null;
+  }
 }

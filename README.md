@@ -48,11 +48,11 @@
 ※ GAS の Web App URL は管理者画面の `GAS_WEB_APP_URL` に設定する必要があります。
 
 #### GAS セットアップ手順:
-1. Google Apps Script エディタを開き、`gas/user-management.gs` の内容を貼り付けます。
-2. ライブラリに `OAuth2` (ID: `1B7_5jkDshY_g_8vAk6SkZp09S_UvIjw7on7sl41IdXmYfS_Z_Oa0C8E`) を追加します。
-3. GCP コンソールでサービスアカウントを作成し、`Identity Toolkit API` の権限を付与します。
+1. Google Apps Script エディタを開き、`gas/user-management.gs` の内容を貼り付けます（※ライブラリ追加は不要です）。
+2. GCP コンソールでサービスアカウントを作成し、`Firebase Authentication 管理者` のロールを付与します。
 4. JSON キーを作成し、そのメールアドレスと秘密鍵をスクリプト内の `CLIENT_EMAIL` と `PRIVATE_KEY` に記入します。
-5. 「デプロイ > 新しいデプロイ」を選択し、種類を「ウェブアプリ」、アクセスできるユーザーを「全員」にしてデプロイします。
+ 5. スクリプト内の `ALLOWED_DOMAIN` に、管理者ページを公開するドメイン（例: `https://your-name.github.io`）を設定します。
+ 6. 「デプロイ > 新しいデプロイ」を選択し、種類を「ウェブアプリ」、アクセスできるユーザーを「全員」にしてデプロイします。
 6. 発行された URL を `web/admin/index.html` の `GAS_WEB_APP_URL` に設定します。
 
 ---

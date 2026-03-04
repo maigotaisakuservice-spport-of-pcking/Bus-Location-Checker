@@ -568,7 +568,11 @@
                 const response = await fetch(GAS_WEB_APP_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ action: 'deleteUsers', uids })
+                    body: JSON.stringify({
+                        action: 'deleteUsers',
+                        uids,
+                        origin: window.location.origin
+                    })
                 });
 
                 // GAS might return CORS errors if not handled, but we attempt to parse
