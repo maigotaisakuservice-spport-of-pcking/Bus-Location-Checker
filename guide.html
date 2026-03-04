@@ -17,85 +17,61 @@
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 md:p-10 font-sans text-slate-700">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-2xl mx-auto">
         <!-- Header -->
         <div class="mb-10 text-center">
             <h1 class="text-3xl font-black text-slate-800 tracking-tight">ご利用ガイド</h1>
-            <p class="text-slate-500 mt-2 font-medium">システムの使い方の説明</p>
+            <p class="text-slate-500 mt-2 font-medium">保護者様向け操作説明</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- For Parents -->
-            <div class="glass-card p-8 rounded-[2.5rem] shadow-xl border border-white">
-                <div class="flex items-center mb-6">
-                    <div class="text-3xl mr-3">👪</div>
-                    <h2 class="text-xl font-black text-slate-800">保護者様向け</h2>
-                </div>
-
-                <div class="space-y-6">
-                    <div>
-                        <h3 class="font-bold text-blue-600 mb-2">1. 利用登録</h3>
-                        <ul class="space-y-3 text-sm">
-                            <li class="flex items-start"><span class="step-number">1</span><div>園から配布された「招待コード」を入力します。</div></li>
-                            <li class="flex items-start"><span class="step-number">2</span><div>お子様のお名前とクラス名を入力します。</div></li>
-                            <li class="flex items-start"><span class="step-number">3</span><div>Googleアカウントでログインすると登録完了です。次回から入力不要になります。</div></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 class="font-bold text-blue-600 mb-2">2. バスを追いかける</h3>
-                        <ul class="space-y-3 text-sm">
-                            <li class="flex items-start"><span class="step-number">!</span><div>地図上の<span class="text-purple-600 font-bold">紫色の線</span>がこれからの走行ルートです。</div></li>
-                            <li class="flex items-start"><span class="step-number">!</span><div>バスがバス停を通過すると、線が<span class="text-slate-400 font-bold">灰色</span>に変わります。</div></li>
-                            <li class="flex items-start"><span class="step-number">!</span><div>「自動追従」ボタンをオンにすると、常にバスが画面中央に表示されます。</div></li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h3 class="font-bold text-blue-600 mb-2">3. 自分のバス停を設定</h3>
-                        <p class="text-sm">地図上のバス停アイコンをタップし、「自分のバス停に設定」を押すと、その場所までの距離と到着予想時間が常に表示されるようになります。</p>
-                    </div>
-
-                    <div>
-                        <h3 class="font-bold text-blue-600 mb-2">4. 兄弟・複数バスの登録</h3>
-                        <p class="text-sm">画面上部の「＋ 別のバスを登録」から、新しい招待コードを入力することで、複数のバスを切り替えて確認できます。</p>
-                    </div>
-                </div>
+        <!-- For Parents -->
+        <div class="glass-card p-8 sm:p-12 rounded-[2.5rem] shadow-xl border border-white">
+            <div class="flex items-center mb-8">
+                <div class="text-4xl mr-4">👪</div>
+                <h2 class="text-2xl font-black text-slate-800">使い方の流れ</h2>
             </div>
 
-            <!-- For Admins -->
-            <div class="glass-card p-8 rounded-[2.5rem] shadow-xl border border-white">
-                <div class="flex items-center mb-6">
-                    <div class="text-3xl mr-3">🛠️</div>
-                    <h2 class="text-xl font-black text-slate-800">管理者向け</h2>
-                </div>
+            <div class="space-y-10">
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-4 flex items-center text-lg">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-3"></span> 1. 利用登録
+                    </h3>
+                    <ul class="space-y-4 text-sm sm:text-base">
+                        <li class="flex items-start"><span class="step-number">1</span><div>園から配布された「招待コード」を入力します。</div></li>
+                        <li class="flex items-start"><span class="step-number">2</span><div>お子様のお名前とクラス名を入力します。</div></li>
+                        <li class="flex items-start"><span class="step-number">3</span><div>Googleアカウントでログインすると登録完了です。次回から入力不要になります。</div></li>
+                    </ul>
+                </section>
 
-                <div class="space-y-6 text-sm">
-                    <div>
-                        <h3 class="font-bold text-slate-600 mb-2">路線の作成と管理</h3>
-                        <p>「＋ 新規バス路線を追加」からバス名や年度を設定します。作成後、停留所を追加してルートを構築します。</p>
-                    </div>
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-4 flex items-center text-lg">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-3"></span> 2. バスを追いかける
+                    </h3>
+                    <ul class="space-y-4 text-sm sm:text-base">
+                        <li class="flex items-start"><span class="step-number">!</span><div>地図上の<span class="text-purple-600 font-bold">紫色の線</span>がこれからの走行ルートです。</div></li>
+                        <li class="flex items-start"><span class="step-number">!</span><div>バスがバス停を通過すると、線が<span class="text-slate-400 font-bold">灰色</span>に変わります。</div></li>
+                        <li class="flex items-start"><span class="step-number">!</span><div>「自動追従」ボタンをオンにすると、常にバスが画面中央に表示されます。</div></li>
+                    </ul>
+                </section>
 
-                    <div>
-                        <h3 class="font-bold text-slate-600 mb-2">停留所の配置</h3>
-                        <p>地図上の好きな場所をクリックして停留所を追加できます。マーカーをドラッグして微調整し、リストの順序を入れ替えることで巡回ルートが確定します。</p>
-                    </div>
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-4 flex items-center text-lg">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-3"></span> 3. 自分のバス停を設定
+                    </h3>
+                    <p class="text-sm sm:text-base leading-relaxed">地図上のバス停アイコンをタップし、「自分のバス停に設定」を押すと、その場所までの距離と到着予想時間が常に表示されるようになります。</p>
+                </section>
 
-                    <div>
-                        <h3 class="font-bold text-slate-600 mb-2">緊急メッセージの配信</h3>
-                        <p>画面上部のテロップを編集できます。「全車共通」または「特定のバスのみ」に出し分けることが可能です（雪による遅延連絡など）。</p>
-                    </div>
-
-                    <div>
-                        <h3 class="font-bold text-slate-600 mb-2">ユーザー管理</h3>
-                        <p>登録された保護者一覧を確認し、年度替わりなどの際に個別または一括で削除を行うことができます。削除すると連携されたGoogleアカウント情報もクリーンアップされます。</p>
-                    </div>
-                </div>
+                <section>
+                    <h3 class="font-bold text-blue-600 mb-4 flex items-center text-lg">
+                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-3"></span> 4. 兄弟・複数バスの登録
+                    </h3>
+                    <p class="text-sm sm:text-base leading-relaxed">画面上部の「＋ 別のバスを登録」から、新しい招待コードを入力することで、複数のバスを切り替えて確認できます。</p>
+                </section>
             </div>
         </div>
 
-        <div class="mt-10 text-center">
-            <button onclick="window.history.back()" class="bg-slate-800 text-white px-8 py-3 rounded-xl font-bold hover:bg-slate-900 transition active:scale-95 shadow-lg">
+        <div class="mt-12 text-center">
+            <button onclick="window.history.back()" class="bg-slate-800 text-white px-10 py-4 rounded-2xl font-bold hover:bg-slate-900 transition active:scale-95 shadow-lg">
                 戻る
             </button>
         </div>

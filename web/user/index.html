@@ -289,18 +289,25 @@
                         window.showMap();
                     } else {
                         // User exists but has no buses, show registration
+                        document.body.classList.add('login-active');
                         window.showRegister();
                     }
                 } else {
                     // New user from Google Login, show registration
+                    document.body.classList.add('login-active');
                     window.showRegister();
                 }
+            } else {
+                // Not logged in, show login view
+                document.body.classList.add('login-active');
+                window.showLogin();
             }
         });
 
         window.loginWithGoogle = async () => {
             try {
-                await signInWithPopup(auth, provider);
+                const result = await signInWithPopup(auth, provider);
+                // The onAuthStateChanged will handle the view switch if meta exists
             } catch (e) {
                 console.error("Auth failed", e);
                 document.getElementById('error').innerText = "認証に失敗しました";
@@ -429,12 +436,10 @@
                 sel.appendChild(addBtn);
             }
 
-            const auth = getAuth(app);
             try {
-                if (!auth.currentUser) await signInAnonymously(auth);
                 requestNotificationPermission();
             } catch (e) {
-                console.error("Auth failed", e);
+                console.error("Notification permission error", e);
             }
 
             const loginSec = document.getElementById('login-section');
@@ -829,7 +834,6 @@
             location.reload();
         };
 
-        if (window.authData) window.showMap();
     </script>
 </body>
 </html>
