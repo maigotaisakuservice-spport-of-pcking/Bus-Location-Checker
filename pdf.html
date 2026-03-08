@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バス運行状況確認システム - 保護者様向けマニュアル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+
+        @media print {
+            .no-print { display: none; }
+            body { background: white; p: 0; m: 0; }
+            .page-break { page-break-after: always; }
+        }
+
+        .step-circle {
+            @apply flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-black text-sm;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 p-4 md:p-10">
+
+    <div class="max-w-[210mm] mx-auto bg-white shadow-2xl p-12 md:p-20 rounded-xl relative">
+
+        <!-- Print Trigger -->
+        <div class="no-print mb-10 text-center">
+            <button onclick="window.print()" class="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition active:scale-95 flex items-center mx-auto space-x-3">
+                <span class="text-xl">🖨️</span>
+                <span>PDFとして保存 / 印刷する</span>
+            </button>
+            <p class="mt-4 text-slate-400 text-sm font-bold tracking-tight">※ ブラウザの印刷機能から「PDFとして保存」を選択してください</p>
+        </div>
+
+        <!-- Header -->
+        <div class="border-b-4 border-slate-900 pb-10 mb-16 flex items-center justify-between">
+            <div>
+                <h1 class="text-4xl font-black tracking-tight mb-2">保護者様向けマニュアル</h1>
+                <p class="text-slate-500 font-black uppercase tracking-widest text-sm">Bus-Location-Checker | 2026 Edition</p>
+            </div>
+            <div class="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center text-3xl shadow-lg">🚌</div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-16">
+
+            <!-- Registration -->
+            <section class="space-y-8">
+                <div class="flex items-center space-x-4 border-l-8 border-blue-600 pl-6">
+                    <h2 class="text-2xl font-black">1. 利用登録の流れ</h2>
+                </div>
+                <div class="space-y-8 pl-4">
+                    <div class="flex space-x-4">
+                        <div class="step-circle shrink-0">1</div>
+                        <div>
+                            <p class="font-black text-lg">招待コードの入力</p>
+                            <p class="text-slate-500 text-sm leading-relaxed mt-1">園から配布された招待コード（英数字の羅列）をコピーして入力欄に貼り付けます。</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4">
+                        <div class="step-circle shrink-0">2</div>
+                        <div>
+                            <p class="font-black text-lg">お子様情報の入力</p>
+                            <p class="text-slate-500 text-sm leading-relaxed mt-1">「お子様のお名前」と「クラス名」を正確に入力してください。この情報は暗号化され安全に管理されます。</p>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4">
+                        <div class="step-circle shrink-0">3</div>
+                        <div>
+                            <p class="font-black text-lg">Google認証</p>
+                            <p class="text-slate-500 text-sm leading-relaxed mt-1">最後にGoogleアカウントでログインすると登録完了です。次回から自動ログインになります。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tracking -->
+            <section class="space-y-8">
+                <div class="flex items-center space-x-4 border-l-8 border-purple-600 pl-6">
+                    <h2 class="text-2xl font-black">2. 地図の見かた</h2>
+                </div>
+                <div class="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 space-y-6">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold">A</div>
+                        <div>
+                            <p class="font-black text-sm">紫色の線（これからのルート）</p>
+                            <p class="text-[10px] text-slate-400 font-bold">バスがこれから通る予定の道筋です。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-slate-400 rounded-xl flex items-center justify-center text-white font-bold">B</div>
+                        <div>
+                            <p class="font-black text-sm">灰色の線（通過したルート）</p>
+                            <p class="text-[10px] text-slate-400 font-bold">バスが既に通過した区間です。</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg shadow-lg">📍</div>
+                        <div>
+                            <p class="font-black text-sm">バスの現在位置</p>
+                            <p class="text-[10px] text-slate-400 font-bold">リアルタイムで地図上を動きます。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- My Stop -->
+            <section class="space-y-8">
+                <div class="flex items-center space-x-4 border-l-8 border-green-600 pl-6">
+                    <h2 class="text-2xl font-black">3. 自分のバス停を設定</h2>
+                </div>
+                <div class="space-y-4 pl-4 leading-relaxed">
+                    <p class="text-sm">地図上のバス停アイコン（丸い印）をタップしてください。</p>
+                    <div class="bg-green-50 p-6 rounded-2xl border border-green-100 text-green-700">
+                        <p class="font-black mb-2">💡 設定するとできること</p>
+                        <ul class="text-xs space-y-2 font-bold">
+                            <li class="flex items-center">✅ バス停までの距離（m）をリアルタイム表示</li>
+                            <li class="flex items-center">✅ バス停への到着予想時間をカウントダウン</li>
+                        </ul>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-bold">※ 設定はいつでも変更できます。下部のボタン「別のバス停を設定」から行えます。</p>
+                </div>
+            </section>
+
+            <!-- Multi-Bus -->
+            <section class="space-y-8">
+                <div class="flex items-center space-x-4 border-l-8 border-slate-900 pl-6">
+                    <h2 class="text-2xl font-black">4. 兄弟・複数路線の登録</h2>
+                </div>
+                <div class="space-y-4 pl-4 leading-relaxed">
+                    <p class="text-sm font-black">画面上部の「＋ 別のバスを登録」ボタンをタップしてください。</p>
+                    <p class="text-sm text-slate-500">新しい招待コードを入力することで、複数の路線を一つのアプリで切り替えて確認できるようになります。</p>
+                    <div class="mt-6 flex items-center p-4 bg-slate-100 rounded-2xl">
+                        <div class="text-2xl mr-4">🔄</div>
+                        <p class="text-[10px] text-slate-500 font-bold">切り替えは画面下の「バスを選択」リストからワンタップで行えます。</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-24 pt-10 border-t border-slate-100 text-center">
+            <p class="text-[10px] text-slate-300 font-black uppercase tracking-[0.3em]">© 2026 Bus-Location-Checker</p>
+        </div>
+
+    </div>
+
+    <div class="mt-10 mb-20 text-center no-print">
+        <button onclick="window.history.back()" class="text-slate-400 font-bold hover:text-slate-600 transition underline underline-offset-8">
+            ガイドに戻る
+        </button>
+    </div>
+
+</body>
+</html>
