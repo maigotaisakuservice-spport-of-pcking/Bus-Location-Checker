@@ -150,6 +150,7 @@
                             <div class="flex items-center space-x-3">
                                 <select id="year-filter" class="bg-slate-100 p-4 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-blue-500 transition" onchange="renderUsers()">
                                     <option value="all">全年度を表示</option>
+                                    <option value="2026">2026年度</option>
                                     <option value="2025">2025年度</option>
                                     <option value="2024">2024年度</option>
                                     <option value="2023">2023年度</option>
@@ -517,7 +518,7 @@
         function updateYearFilter() {
             const filter = document.getElementById('year-filter');
             const current = filter.value;
-            const years = [...new Set(users.map(u => u.regYear || "2024"))].sort().reverse();
+            const years = [...new Set(users.map(u => u.regYear || "2026"))].sort().reverse();
             filter.innerHTML = '<option value="all">全年度を表示</option>';
             years.forEach(y => {
                 const opt = document.createElement('option');
@@ -534,7 +535,7 @@
             tbody.innerHTML = '';
 
             users.forEach(user => {
-                const year = user.regYear || "2024";
+                const year = user.regYear || "2026";
                 if (filter !== 'all' && year !== filter) return;
 
                 const bus = buses.find(b => b.id === user.busId);
