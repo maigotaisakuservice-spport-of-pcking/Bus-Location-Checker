@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Not Found</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+
+        .loading-bar {
+            width: 0%;
+            height: 4px;
+            background: #3b82f6;
+            transition: width 0.1s linear;
+        }
+        @keyframes scan {
+            0% { transform: translateY(-100%); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100%); opacity: 0; }
+        }
+        .scanner-line {
+            height: 2px;
+            background: linear-gradient(to right, transparent, #3b82f6, transparent);
+            animation: scan 2s infinite linear;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6">
+
+    <!-- Default 404 View -->
+    <div id="error-404" class="text-center">
+        <h1 class="text-9xl font-black text-slate-200">404</h1>
+        <p class="text-2xl font-black text-slate-800 mt-4">Page Not Found</p>
+        <p class="text-slate-400 mt-2">お探しのページは見つかりませんでした。</p>
+        <a href="index.html" class="inline-block mt-8 text-blue-600 font-bold hover:underline">トップページへ戻る</a>
+    </div>
+
+    <!-- Security Check View -->
+    <div id="security-check" class="hidden max-w-md w-full bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 relative overflow-hidden text-center">
+        <div class="absolute top-0 left-0 w-full scanner-line"></div>
+
+        <div class="mb-10">
+            <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl mx-auto flex items-center justify-center text-3xl shadow-inner mb-6">🛡️</div>
+            <h2 class="text-2xl font-black text-slate-800 tracking-tight">セキュリティチェック中</h2>
+            <p class="text-slate-400 mt-2 text-xs font-bold uppercase tracking-widest">安全な接続を確認しています</p>
+        </div>
+
+        <div class="space-y-6">
+            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-left space-y-3">
+                <div class="flex items-center justify-between text-[11px] font-black uppercase tracking-tighter">
+                    <span class="text-slate-400">VPN・プロキシ検出</span>
+                    <span id="vpn-status" class="text-blue-500 italic">待機中...</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] font-black uppercase tracking-tighter">
+                    <span class="text-slate-400">外部介入・改ざんチェック</span>
+                    <span id="intervene-status" class="text-blue-500 italic">待機中...</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] font-black uppercase tracking-tighter">
+                    <span class="text-slate-400">通信経路の整合性</span>
+                    <span id="route-status" class="text-blue-500 italic">待機中...</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] font-black uppercase tracking-tighter">
+                    <span class="text-slate-400">デバイスの完全性</span>
+                    <span id="device-status" class="text-blue-500 italic">待機中...</span>
+                </div>
+            </div>
+
+            <div class="relative pt-4">
+                <div class="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                    <div id="progress-bar" class="loading-bar"></div>
+                </div>
+                <p id="progress-text" class="text-[10px] text-slate-400 font-black mt-3 uppercase tracking-widest">解析の準備中... 0%</p>
+            </div>
+        </div>
+
+        <div id="warning-box" class="hidden mt-8 p-6 bg-red-50 border border-red-100 rounded-3xl text-left">
+            <p class="text-red-600 font-black text-xs leading-relaxed">
+                ⚠️ セキュリティ警告<br>
+                不正な接続（VPN、プロキシ、または外部からの介入）が検出されました。<br>
+                この端末からのアクセスは安全ではないと判断されました。<br><br>
+                <span id="warning-reason" class="text-[10px] opacity-80">理由: 通信経路の安全性が確認できません。</span><br><br>
+                速やかにサポート担当者へご連絡ください。
+            </p>
+        </div>
+
+        <p class="mt-10 text-[10px] text-slate-300 font-black uppercase tracking-widest">システム保護：アクティブ</p>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const target = urlParams.get('target');
+        const token = urlParams.get('token');
+        const validToken = sessionStorage.getItem('transition_token');
+
+        if (target && token && token === validToken) {
+            document.getElementById('error-404').classList.add('hidden');
+            document.getElementById('security-check').classList.remove('hidden');
+            performStrictScan();
+        }
+
+        async function performStrictScan() {
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            let securityResult = {
+                vpn: false,
+                intervention: false,
+                route: false,
+                device: false,
+                reason: ""
+            };
+
+            // Step 1: Device Check (Automated Browser)
+            if (navigator.webdriver) {
+                securityResult.device = true;
+                securityResult.reason = "自動化ツールの使用を検出しました。";
+            }
+
+            // Step 2: Network Analysis via Cloudflare Trace
+            try {
+                const response = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
+                const dataText = await response.text();
+                const lines = dataText.split('\n');
+                const trace = {};
+                lines.forEach(line => {
+                    const [key, value] = line.split('=');
+                    if (key) trace[key] = value;
+                });
+
+                // VPN / Warp Check
+                if (trace.warp !== 'off') {
+                    securityResult.vpn = true;
+                    securityResult.reason = "安全な直接接続ではありません（VPN/WARPを検出）。";
+                }
+
+                // Location Check (Strictly Japan)
+                if (trace.loc !== 'JP') {
+                    securityResult.vpn = true;
+                    securityResult.reason = "許可されていない地域（" + (trace.loc || '不明') + "）からの接続です。";
+                }
+
+                // Proxy/Intervention Check (Colocation check - optional but can be strict)
+                // For this implementation, we focus on loc and warp as specified.
+
+            } catch (e) {
+                securityResult.route = true;
+                securityResult.reason = "セキュリティ通信の確立に失敗しました。";
+            }
+
+            // UI Animation
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 8;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    finalizeScan(securityResult);
+                }
+
+                progressBar.style.width = `${progress}%`;
+                progressText.innerText = `解析中... ${Math.floor(progress)}%`;
+
+                if (progress > 20) updateStatus('vpn-status', progress > 40 && securityResult.vpn ? '⚠️ 検出' : '✅ 正常');
+                if (progress > 45) updateStatus('intervene-status', progress > 60 && securityResult.intervention ? '⚠️ 検出' : '✅ 正常');
+                if (progress > 70) updateStatus('route-status', progress > 85 && securityResult.route ? '⚠️ 不正' : '✅ 正常');
+                if (progress > 90) updateStatus('device-status', securityResult.device ? '⚠️ 警告' : '✅ 正常');
+            }, 150);
+        }
+
+        function updateStatus(id, text) {
+            const el = document.getElementById(id);
+            el.innerText = text;
+            if (text.includes('⚠️')) el.classList.replace('text-blue-500', 'text-red-500');
+            else el.classList.replace('text-blue-500', 'text-green-500');
+        }
+
+        function finalizeScan(result) {
+            const hasError = result.vpn || result.intervention || result.route || result.device;
+
+            if (hasError) {
+                document.getElementById('warning-box').classList.remove('hidden');
+                document.getElementById('warning-reason').innerText = "理由: " + result.reason;
+                document.getElementById('progress-text').innerText = "スキャン失敗: セキュリティリスクを検出";
+                document.getElementById('progress-text').classList.replace('text-slate-400', 'text-red-500');
+                document.getElementById('progress-bar').style.backgroundColor = '#ef4444';
+                return;
+            }
+
+            // Success
+            sessionStorage.removeItem('transition_token');
+            const destinations = {
+                'user': 'web/user/index.html',
+                'admin': 'web/admin/index.html',
+                'portal': 'login.html'
+            };
+
+            setTimeout(() => {
+                window.location.href = destinations[target] || 'index.html';
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

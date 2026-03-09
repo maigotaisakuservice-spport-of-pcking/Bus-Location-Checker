@@ -63,7 +63,7 @@
                 <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200">🚌</div>
                 <span class="text-xl font-black tracking-tighter">Bus-Location-Checker</span>
             </div>
-            <a href="login.html" class="bg-slate-900 text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-slate-800 transition shadow-lg">ご利用者様はこちら</a>
+            <button onclick="goToPortal()" class="bg-slate-900 text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-slate-800 transition shadow-lg">ご利用者様はこちら</button>
         </div>
     </header>
 
@@ -268,7 +268,7 @@
                 <span class="text-xl font-black tracking-tighter">Bus-Location-Checker</span>
             </div>
             <div class="flex space-x-10 text-slate-400 font-bold text-sm">
-                <a href="login.html" class="hover:text-white transition">ログイン</a>
+                <button onclick="goToPortal()" class="hover:text-white transition">ログイン</button>
                 <a href="guide.html" class="hover:text-white transition">使い方ガイド</a>
             </div>
         </div>
@@ -276,6 +276,14 @@
             © 2026 Bus-Location-Checker. All Rights Reserved.
         </div>
     </footer>
+
+    <script>
+        function goToPortal() {
+            const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            sessionStorage.setItem('transition_token', token);
+            window.location.href = `security-check.html?target=portal&token=${token}`;
+        }
+    </script>
 
 </body>
 </html>

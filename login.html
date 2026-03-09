@@ -40,8 +40,15 @@
     </div>
 
     <script>
+        function generateToken() {
+            const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            sessionStorage.setItem('transition_token', token);
+            return token;
+        }
+
         function goToUser() {
-            window.location.href = 'web/user/index.html';
+            const token = generateToken();
+            window.location.href = `security-check.html?target=user&token=${token}`;
         }
 
         function goToAdmin() {
@@ -52,7 +59,8 @@
             const hashedInput = CryptoJS.SHA256(passcode).toString();
 
             if (hashedInput === targetHash) {
-                window.location.href = 'web/admin/index.html';
+                const token = generateToken();
+                window.location.href = `security-check.html?target=admin&token=${token}`;
             } else {
                 alert("パスコードが正しくありません");
             }
