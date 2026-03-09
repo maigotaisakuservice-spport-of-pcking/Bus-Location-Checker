@@ -594,7 +594,8 @@
         }
 
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([35.6812, 139.7671], 13);
+            // Center on Fujimi City Hall, Saitama (35.8561, 139.5488)
+            window.map = map = L.map('map', { zoomControl: false }).setView([35.8561, 139.5488], 15);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
@@ -883,22 +884,25 @@
 
         window.moveStop = async (id, direction) => {
             const busId = document.getElementById('editor-bus-select').value;
-            const stops = busStops.filter(s => s.busId === busId).sort((a, b) => (a.order || 0) - (b.order || 0));
+            // Get all stops for this bus and sort them correctly
+            const stops = busStops
+                .filter(s => s.busId === busId)
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.id.localeCompare(b.id));
+
             const idx = stops.findIndex(s => s.id === id);
             if (idx === -1) return;
 
             const targetIdx = idx + direction;
             if (targetIdx < 0 || targetIdx >= stops.length) return;
 
-            const currentStop = stops[idx];
-            const targetStop = stops[targetIdx];
+            // Perform swap in the local array
+            const [movedItem] = stops.splice(idx, 1);
+            stops.splice(targetIdx, 0, movedItem);
 
-            // Swap orders
-            const currentOrder = currentStop.order || 0;
-            const targetOrder = targetStop.order || 0;
-
-            await updateDoc(doc(db, "busStops", currentStop.id), { order: targetOrder });
-            await updateDoc(doc(db, "busStops", targetStop.id), { order: currentOrder });
+            // Batch update all orders to ensure they are unique and sequential
+            // This fixes issues where 'order' values might be missing or identical
+            const updates = stops.map((s, i) => updateDoc(doc(db, "busStops", s.id), { order: i }));
+            await Promise.all(updates);
         };
 
         window.refreshMap = () => {
