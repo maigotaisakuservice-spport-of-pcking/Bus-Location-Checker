@@ -255,7 +255,7 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        let map, busMarker, stopsMarkers = [], routePolyline, passedPolyline, routingControl;
+        let map, busMarker, stopsMarkers = [], routePolyline, routingControl, basePolyline;
         let currentBusPos = null;
         let isAutoFollow = true;
         let pc = null;
@@ -455,8 +455,11 @@
                 mapSec.classList.remove('hidden');
                 setTimeout(() => {
                     mapSec.classList.remove('opacity-0');
-                    if (map) map.invalidateSize();
-                }, 50);
+                    if (map) {
+                        map.invalidateSize();
+                        if (currentBusPos) map.setView(currentBusPos, map.getZoom());
+                    }
+                }, 100);
                 initMap();
                 startTracking();
                 initWebRTC();
@@ -625,6 +628,7 @@
 
         async function updateDetailedRoute() {
             if (routingControl) map.removeControl(routingControl);
+            if (basePolyline) map.removeLayer(basePolyline);
 
             if (masterRoutePoints.length < 2) {
                 detailedRoutePoints = [];
@@ -634,26 +638,50 @@
 
             routingControl = L.Routing.control({
                 waypoints: masterRoutePoints.map(p => L.latLng(p[0], p[1])),
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1'
+                }),
                 createMarker: () => null,
                 addWaypoints: false,
                 draggableWaypoints: false,
                 show: false,
-                lineOptions: { styles: [{ opacity: 0 }] } // Hidden line, we draw it ourselves
+                lineOptions: { styles: [{ opacity: 0 }] }
             }).on('routesfound', (e) => {
                 const route = e.routes[0];
                 detailedRoutePoints = route.coordinates.map(c => [c.lat, c.lng]);
+
+                // Draw base gray line (full road path)
+                basePolyline = L.polyline(detailedRoutePoints, {
+                    color: '#94a3b8',
+                    weight: 6,
+                    opacity: 0.4,
+                    lineJoin: 'round'
+                }).addTo(map);
+
+                updateRouteStyles();
+            }).on('routingerror', (e) => {
+                console.warn("Routing failed, falling back to straight lines.", e);
+                detailedRoutePoints = masterRoutePoints;
+
+                basePolyline = L.polyline(detailedRoutePoints, {
+                    color: '#94a3b8',
+                    weight: 6,
+                    opacity: 0.2,
+                    lineJoin: 'round',
+                    dashArray: '10, 10'
+                }).addTo(map);
+
                 updateRouteStyles();
             }).addTo(map);
         }
 
         function updateRouteStyles() {
-            if (!currentBusPos) return;
-            if (passedPolyline) map.removeLayer(passedPolyline);
+            if (!currentBusPos || detailedRoutePoints.length === 0) return;
             if (routePolyline) map.removeLayer(routePolyline);
 
-            const points = detailedRoutePoints.length > 0 ? detailedRoutePoints : masterRoutePoints;
+            const points = detailedRoutePoints;
 
-            // Find progress along the detailed path
+            // Find the point on the road closest to the bus
             let closestIdx = -1;
             let minDist = Infinity;
             points.forEach((p, i) => {
@@ -661,51 +689,45 @@
                 if (d < minDist) { minDist = d; closestIdx = i; }
             });
 
-            // Threshold logic for stops (10m)
-            // We use a sticky "arrived" state to handle the 10m enter/exit logic accurately
+            if (closestIdx === -1) return;
+
+            // Upcoming route is from the closest point on the road to the end
+            const upcomingPoints = points.slice(closestIdx);
+
+            // Add the bus position to the start for a smooth connection
+            upcomingPoints.unshift([currentBusPos.lat, currentBusPos.lng]);
+
+            routePolyline = L.polyline(upcomingPoints, {
+                color: '#8b5cf6',
+                weight: 6,
+                opacity: 0.8,
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Determine which stops are passed
             if (!window.stopStatus) window.stopStatus = {};
-
             let lastPassedStopIdx = -1;
-            masterRoutePoints.forEach((sp, si) => {
-                const d = map.distance(L.latLng(sp[0], sp[1]), currentBusPos);
-                const stopId = stopsMarkers[si]?.stopId;
 
-                if (d <= 10) {
+            masterRoutePoints.forEach((sp, si) => {
+                const stopId = stopsMarkers[si]?.stopId;
+                const d = map.distance(L.latLng(sp[0], sp[1]), currentBusPos);
+
+                // Find where this stop is on the detailed path
+                let stopDetailedIdx = -1;
+                let minSDist = Infinity;
+                points.forEach((dp, di) => {
+                    const sd = map.distance(L.latLng(dp[0], dp[1]), L.latLng(sp[0], sp[1]));
+                    if (sd < minSDist) { minSDist = sd; stopDetailedIdx = di; }
+                });
+
+                if (d <= 15) { // Slightly larger threshold for arrival detection
                     window.stopStatus[stopId] = 'arrived';
                     lastPassedStopIdx = si;
-                } else {
-                    if (window.stopStatus[stopId] === 'arrived') {
-                        window.stopStatus[stopId] = 'passed';
-                    }
-
-                    if (window.stopStatus[stopId] === 'passed') {
-                        lastPassedStopIdx = si;
-                    } else {
-                        // Fallback: If the bus is significantly past the stop in the detailed path
-                        let stopInDetailedIdx = -1;
-                        let minSDist = Infinity;
-                        points.forEach((dp, di) => {
-                            const sd = map.distance(L.latLng(dp[0], dp[1]), L.latLng(sp[0], sp[1]));
-                            if (sd < minSDist) { minSDist = sd; stopInDetailedIdx = di; }
-                        });
-                        if (closestIdx > stopInDetailedIdx + 5) { // 5-point buffer for detail
-                            lastPassedStopIdx = si;
-                            window.stopStatus[stopId] = 'passed';
-                        }
-                    }
+                } else if (window.stopStatus[stopId] === 'arrived' || closestIdx > stopDetailedIdx + 5) {
+                    window.stopStatus[stopId] = 'passed';
+                    lastPassedStopIdx = si;
                 }
             });
-
-            const passedPoints = points.slice(0, closestIdx + 1);
-            // Include bus position for a smooth bridge
-            const upcomingPoints = [[currentBusPos.lat, currentBusPos.lng], ...points.slice(closestIdx + 1)];
-
-            if (passedPoints.length > 1) {
-                passedPolyline = L.polyline(passedPoints, {color: '#94a3b8', weight: 6, opacity: 0.5}).addTo(map);
-            }
-            if (upcomingPoints.length > 1) {
-                routePolyline = L.polyline(upcomingPoints, {color: '#8b5cf6', weight: 6, opacity: 0.7}).addTo(map);
-            }
 
             stopsMarkers.forEach((m, i) => {
                 const el = m.getElement();
@@ -743,11 +765,15 @@
                 if (diff > 300) {
                     badge.classList.remove('hidden');
                     if (routePolyline) routePolyline.setStyle({opacity: 0.1});
-                    if (passedPolyline) passedPolyline.setStyle({opacity: 0.1});
+                    if (basePolyline) basePolyline.setStyle({opacity: 0.1});
                 } else {
                     badge.classList.add('hidden');
-                    if (routePolyline) routePolyline.setStyle({opacity: 0.7});
-                    if (passedPolyline) passedPolyline.setStyle({opacity: 0.5});
+                    if (routePolyline) {
+                        routePolyline.setStyle({opacity: 0.8});
+                    }
+                    if (basePolyline) {
+                        basePolyline.setStyle({opacity: 0.4});
+                    }
                 }
             }
 

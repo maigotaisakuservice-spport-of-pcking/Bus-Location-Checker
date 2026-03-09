@@ -214,59 +214,86 @@
 
     <!-- Modals -->
     <div id="help-modal" class="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="max-w-2xl w-full bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div class="max-w-3xl w-full bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeHelp()" class="absolute top-8 right-8 text-slate-400 hover:text-slate-600 transition text-2xl">✕</button>
-            <h2 class="text-2xl font-black mb-8 text-slate-800 flex items-center">
-                <span class="mr-3 text-3xl">❓</span> 管理者ヘルプガイド
-            </h2>
 
-            <div class="space-y-8 text-sm leading-relaxed text-slate-600">
-                <section>
-                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 1. 路線の作成と管理
-                    </h3>
-                    <p>「ダッシュボード」画面の「＋ 新規路線を追加」ボタンからバス名（例：青ルート）や年度を設定します。作成した路線ごとに固有の<b>招待コード</b>が発行されますので、これを保護者に配布してください。</p>
-                    <p class="mt-2 text-xs text-slate-400">※ 路線を削除すると、その路線に紐づく停留所データもすべて削除されますのでご注意ください。</p>
+            <div class="mb-10 text-center">
+                <div class="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center text-4xl shadow-inner mx-auto mb-6">📖</div>
+                <h2 class="text-3xl font-black text-slate-800 tracking-tight">管理者操作マニュアル</h2>
+                <p class="text-slate-400 mt-2 font-bold uppercase tracking-widest text-xs">Administrative Operations Guide</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-slate-800">
+                <section class="space-y-4">
+                    <div class="flex items-center space-x-3 text-blue-600">
+                        <span class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center font-black">01</span>
+                        <h3 class="font-black text-lg">路線の基本管理</h3>
+                    </div>
+                    <p class="text-sm leading-relaxed font-medium">
+                        「ダッシュボード」から新規路線を作成します。各路線には固有の<b>256bit暗号鍵</b>が割り当てられ、自動生成される<b>招待コード</b>を保護者に配布することで、安全な位置情報の共有が始まります。
+                    </p>
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs font-bold text-slate-500">
+                        💡 路線を削除すると、紐づくバス停やユーザーの閲覧権限もすべて無効化されます。
+                    </div>
                 </section>
 
-                <section>
-                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 2. 停留所の配置とルート構築
-                    </h3>
-                    <p>「バス停・ルート」画面で編集したいバスを選択し、<b>地図上の停留所を設置したい場所を直接クリック</b>します。名称を入力するとマーカーが設置されます。</p>
-                    <p class="mt-2">リストの順序に従って巡回ルートが自動的に計算され、保護者側のアプリに道路沿いの正確なルートとして表示されます。</p>
+                <section class="space-y-4">
+                    <div class="flex items-center space-x-3 text-indigo-600">
+                        <span class="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center font-black">02</span>
+                        <h3 class="font-black text-lg">ルート構築と吸着機能</h3>
+                    </div>
+                    <p class="text-sm leading-relaxed font-medium">
+                        「バス停エディタ」で地図をクリックして停留所を配置します。<b>「道路に吸着」</b>設定が有効な場合、クリック位置から最も近い公道上に自動で補正されます。
+                    </p>
+                    <p class="text-sm leading-relaxed font-medium">
+                        リスト内の<b>「▲ ▼」ボタン</b>で巡回順序を入れ替えることができ、それに基づき最適な走行ルートが自動計算されます。
+                    </p>
                 </section>
 
-                <section>
-                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 3. 緊急メッセージの配信
-                    </h3>
-                    <p>ダッシュボード上部の「一斉連絡・緊急テロップ」セクションから、保護者アプリの画面上部に流れるメッセージを編集できます。</p>
-                    <ul class="list-disc ml-5 mt-1 space-y-1">
-                        <li><b>全車共通:</b> すべてのバス利用者に同じ内容を表示（例：大雪による全便運休のお知らせ）。</li>
-                        <li><b>特定のバス:</b> 特定の路線のみに表示（例：1号車のみ15分遅延）。</li>
-                    </ul>
+                <section class="space-y-4">
+                    <div class="flex items-center space-x-3 text-red-600">
+                        <span class="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center font-black">03</span>
+                        <h3 class="font-black text-lg">緊急連絡・運行制御</h3>
+                    </div>
+                    <p class="text-sm leading-relaxed font-medium">
+                        テロップ配信では、特定の路線のみ、または全路線一斉のメッセージ送信が可能です。
+                    </p>
+                    <p class="text-sm leading-relaxed font-medium">
+                        <b>「運行停止」</b>スイッチをONにすると、GPS通信の状態に関わらず保護者アプリ上で「停止中」と表示され、地図機能が制限されます。
+                    </p>
                 </section>
 
-                <section>
-                    <h3 class="font-bold text-blue-600 mb-2 flex items-center">
-                        <span class="w-2 h-2 bg-blue-600 rounded-full mr-2"></span> 4. ユーザー管理と年度更新
-                    </h3>
-                    <p>「ユーザー管理」画面では、現在登録されている保護者の一覧を確認できます。年度替わりの時期には、年度フィルターで対象年を選択し、「一括削除」を行うことで、不要になったアカウント情報をクリーンアップできます。</p>
-                    <p class="mt-2 text-xs text-slate-400">※ 削除を実行すると、保護者のGoogleアカウント連携も解除されます。</p>
-                </section>
-
-                <section class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                    <h3 class="font-bold text-blue-800 mb-2">💡 運用のアドバイス</h3>
-                    <p class="text-blue-700 text-xs leading-relaxed">
-                        バス側（運転手）の端末では、走行開始時に「走行開始」ボタンを押し、画面を点灯させたままにしてください。5分以上通信が途絶えると、保護者側には「時間外 / 停止中」として表示されます。
+                <section class="space-y-4">
+                    <div class="flex items-center space-x-3 text-green-600">
+                        <span class="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center font-black">04</span>
+                        <h3 class="font-black text-lg">年度更新とデータ整理</h3>
+                    </div>
+                    <p class="text-sm leading-relaxed font-medium">
+                        年度末には「ユーザー管理」から卒業生のアカウントを一括削除できます。
+                    </p>
+                    <p class="text-sm leading-relaxed font-medium">
+                        フィルターで特定の年度を選択し、一括チェックを入れた後<b>「選択中を削除」</b>を実行してください。Google認証情報も含め、サーバーから完全に消去されます。
                     </p>
                 </section>
             </div>
 
-            <button onclick="closeHelp()" class="mt-10 w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition">
-                閉じる
-            </button>
+            <div class="mt-12 pt-8 border-t border-slate-100">
+                <div class="bg-blue-600 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-xl shadow-blue-200">
+                    <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div class="text-center md:text-left">
+                            <h4 class="text-xl font-black mb-1">運転手様への指示</h4>
+                            <p class="text-blue-100 text-xs font-bold leading-relaxed">
+                                走行開始時は「走行開始」ボタンを押し、アプリを表示したまま（画面オフにせず）走行するようお伝えください。<br>
+                                本システムはWebRTCを使用しており、画面がアクティブな状態で最も正確な追跡が可能です。
+                            </p>
+                        </div>
+                        <button onclick="closeHelp()" class="whitespace-nowrap bg-white text-blue-600 px-8 py-3 rounded-2xl font-black hover:bg-blue-50 transition active:scale-95 shadow-lg">
+                            了解しました
+                        </button>
+                    </div>
+                    <div class="absolute -right-10 -bottom-10 text-white/10 text-9xl rotate-12 pointer-events-none">🚌</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -789,14 +816,20 @@
                 if (waypoints.length >= 2) {
                     routingControl = L.Routing.control({
                         waypoints: waypoints,
-                        createMarker: () => null, // Markers already handled
+                        router: L.Routing.osrmv1({
+                            serviceUrl: 'https://router.project-osrm.org/route/v1'
+                        }),
+                        createMarker: () => null,
                         routeWhileDragging: false,
                         addWaypoints: false,
                         draggableWaypoints: false,
                         lineOptions: {
                             styles: [{ color: '#6366f1', opacity: 0.6, weight: 6 }]
                         },
-                        show: false // Hide instructions panel
+                        show: false
+                    }).on('routingerror', (e) => {
+                        console.warn("Admin routing failed:", e);
+                        L.polyline(waypoints, { color: '#6366f1', opacity: 0.3, weight: 4, dashArray: '5, 5' }).addTo(map);
                     }).addTo(map);
                 }
 
