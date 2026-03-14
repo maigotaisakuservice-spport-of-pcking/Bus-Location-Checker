@@ -408,7 +408,7 @@
         window.closeHelp = () => document.getElementById('help-modal').classList.add('hidden');
 
         window.switchView = (viewId) => {
-            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.querySelectorAll('#views > section').forEach(s => s.classList.add('hidden'));
             document.getElementById(`view-${viewId}`).classList.remove('hidden');
 
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active-nav'));
