@@ -380,7 +380,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, doc, setDoc, getDoc, updateDoc, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, query, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         /**
          * IMPORTANT: This application uses the firebaseConfig defined in ../shared/utils.js
@@ -573,18 +573,18 @@
                 tr.className = "hover:bg-slate-50 transition-colors group";
                 tr.innerHTML = `
                     <td class="p-6 text-center">
-                        <input type="checkbox" class="user-checkbox w-5 h-5 rounded-lg border-slate-300 text-blue-600" data-id="${user.id}">
+                        <input type="checkbox" class="user-checkbox w-5 h-5 rounded-lg border-slate-300 text-blue-600" data-id="${user.id}" data-uid="${user.uid}">
                     </td>
                     <td class="p-6 font-black text-slate-400 text-xs">${year}年</td>
                     <td class="p-6">
                         <p class="font-black text-slate-800">${parentName}</p>
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">ID: ${user.id.substring(0,8)}</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">UID: ${user.uid.substring(0,8)}</p>
                     </td>
                     <td class="p-6">
                         <span class="px-3 py-1 bg-slate-100 rounded-full text-[10px] font-black text-slate-600">${busName}</span>
                     </td>
                     <td class="p-6 text-right">
-                        <button onclick="deleteUser('${user.id}')" class="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition group-hover:shadow-lg group-hover:shadow-red-200 mx-auto mr-0">
+                        <button onclick="deleteUser('${user.id}', '${user.uid}')" class="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition group-hover:shadow-lg group-hover:shadow-red-200 mx-auto mr-0">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>
@@ -636,20 +636,25 @@
             document.querySelectorAll('.user-checkbox').forEach(c => c.checked = checked);
         };
 
-        window.deleteUser = async (id) => {
-            if (confirm("このユーザーの利用情報を削除しますか？ (Authも削除されます)")) {
-                await callGASDelete([id]);
-                await deleteDoc(doc(db, "users", id));
+        window.deleteUser = async (docId, uid) => {
+            if (confirm("このユーザーの利用情報を削除しますか？ (Authおよびメタデータも削除されます)")) {
+                await callGASDelete([uid]);
+                await deleteDoc(doc(db, "users", docId));
+                await deleteDoc(doc(db, "users_meta", uid));
                 alert("削除しました");
             }
         };
 
         window.bulkDeleteUsers = async () => {
-            const ids = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(c => c.dataset.id);
-            if (ids.length === 0) return alert("一括削除するユーザーをチェックしてください");
-            if (confirm(`${ids.length}名のユーザーデータを削除します。Authアカウントも同時に削除されますがよろしいですか？`)) {
-                await callGASDelete(ids);
-                for (const id of ids) await deleteDoc(doc(db, "users", id));
+            const checkboxes = Array.from(document.querySelectorAll('.user-checkbox:checked'));
+            const docIds = checkboxes.map(c => c.dataset.id);
+            const uids = checkboxes.map(c => c.dataset.uid);
+
+            if (docIds.length === 0) return alert("一括削除するユーザーをチェックしてください");
+            if (confirm(`${docIds.length}名のユーザーデータを削除します。Authおよびメタデータも同時に削除されますがよろしいですか？`)) {
+                await callGASDelete(uids);
+                for (const id of docIds) await deleteDoc(doc(db, "users", id));
+                for (const uid of uids) await deleteDoc(doc(db, "users_meta", uid));
                 alert("一括削除が完了しました");
             }
         };
@@ -767,6 +772,20 @@
                 "config.snapToRoad": snap,
                 "config.forceStop": force
             });
+
+            if (force) {
+                // Force Stop enabled: Cleanup signaling and active status immediately
+                try {
+                    await updateDoc(doc(db, "buses", id), {
+                        "status.encryptedLocation": "",
+                        "status.isActive": false
+                    });
+                    const q_signaling = query(collection(db, "signaling"), where("busId", "==", id));
+                    const snap_signaling = await getDocs(q_signaling);
+                    const deletePromises = snap_signaling.docs.map(d => deleteDoc(d.ref));
+                    await Promise.all(deletePromises);
+                } catch (e) { console.error("Admin forced cleanup failed", e); }
+            }
 
             closeBusSettings();
             alert("設定を保存しました");

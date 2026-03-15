@@ -25,12 +25,8 @@ function doPost(e) {
 
   if (action === 'deleteUsers' && params.uids) {
     const uids = Array.isArray(params.uids) ? params.uids : [params.uids];
-    const results = uids.map(uid => ({
-      uid,
-      success: deleteFirebaseAuthUser(uid)
-    }));
-
-    return createJsonResponse({ status: 'ok', results });
+    const success = deleteFirebaseAuthUsersBatch(uids);
+    return createJsonResponse({ status: success ? 'ok' : 'error', count: uids.length });
   }
 
   return createJsonResponse({ status: 'error', message: 'Invalid action or missing parameters' });
@@ -41,16 +37,19 @@ function createJsonResponse(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function deleteFirebaseAuthUser(uid) {
+function deleteFirebaseAuthUsersBatch(uids) {
+  if (uids.length === 0) return true;
+
   const token = getServiceAccountToken();
   if (!token) return false;
 
+  // The Identity Toolkit API supports up to 1000 accounts per batch delete
   const url = `https://identitytoolkit.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/accounts:batchDelete`;
   const options = {
     method: 'post',
     contentType: 'application/json',
     headers: { Authorization: 'Bearer ' + token },
-    payload: JSON.stringify({ localIds: [uid] }),
+    payload: JSON.stringify({ localIds: uids }),
     muteHttpExceptions: true
   };
 
@@ -58,7 +57,7 @@ function deleteFirebaseAuthUser(uid) {
   const code = response.getResponseCode();
 
   if (code !== 200) {
-    Logger.log(`Failed to delete user ${uid}: ${response.getContentText()}`);
+    Logger.log(`Failed to delete users batch: ${response.getContentText()}`);
   }
 
   return code === 200;

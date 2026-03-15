@@ -279,9 +279,7 @@
 
     <script>
         function goToPortal() {
-            const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-            sessionStorage.setItem('transition_token', token);
-            window.location.href = `security-check.html?target=portal&token=${token}`;
+            window.location.href = 'login.html';
         }
     </script>
 

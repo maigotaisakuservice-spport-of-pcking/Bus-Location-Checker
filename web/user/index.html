@@ -258,6 +258,7 @@
         let map, busMarker, stopsMarkers = [], routePolyline, routingControl, basePolyline;
         let currentBusPos = null;
         let isAutoFollow = true;
+        let routeRefreshInterval = null;
         let pc = null;
         let myStopId = null;
 
@@ -785,6 +786,12 @@
 
         function startTracking() {
             if (!window.authData) return;
+
+            if (routeRefreshInterval) clearInterval(routeRefreshInterval);
+            routeRefreshInterval = setInterval(() => {
+                console.log("Recalculating route (5min interval)...");
+                updateDetailedRoute();
+            }, 5 * 60 * 1000);
 
             let globalMsg = "";
             let busMsg = "";
