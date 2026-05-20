@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バス運行状況確認システム | サービス紹介</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Encryption Animation Styles */
+        @keyframes drive {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            25% { transform: translateY(-1px) translateX(0.5px); }
+            50% { transform: translateY(0) translateX(-0.5px); }
+            75% { transform: translateY(-0.5px) translateX(0.5px); }
+        }
+        @keyframes user-check {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-5px) rotate(2deg); }
+        }
+        @keyframes phone-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(74, 222, 128, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(74, 222, 128, 0.9); }
+        }
+        @keyframes flow {
+            0% { left: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+        .animate-drive { animation: drive 0.3s infinite linear; }
+        .animate-user-check { animation: user-check 3s ease-in-out infinite; }
+        .animate-phone-glow { animation: phone-glow 2s infinite; }
+        .data-particle {
+            position: absolute;
+            top: 50%;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3b82f6;
+            animation: flow 4s linear infinite;
+        }
+        .scrambled {
+            font-family: monospace;
+            filter: blur(1px);
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-900 overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-blue-200">🚌</div>
+                <span class="text-xl font-black tracking-tighter">Bus-Location-Checker</span>
+            </div>
+            <button onclick="goToPortal()" class="bg-slate-900 text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-slate-800 transition shadow-lg">ご利用者様はこちら</button>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="pt-40 pb-20 px-6">
+        <div class="max-w-7xl mx-auto text-center">
+            <h1 class="text-5xl md:text-7xl font-black mb-8 leading-tight tracking-tight">
+                バスの「今」がわかる、<br><span class="gradient-text">安心を届ける。</span>
+            </h1>
+            <p class="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto mb-12 font-medium">
+                幼稚園・保育園、スクールバスの運行状況をリアルタイムで共有。<br>
+                保護者の待ち時間を減らし、送迎のストレスを解消します。
+            </p>
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6">
+                <div class="bg-red-50 text-red-600 px-8 py-4 rounded-2xl font-black border border-red-100 flex items-center">
+                    <span class="mr-2">⚠️</span> 只今新規契約の受け付けを停止しています
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="py-20 bg-slate-50 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mb-8">📍</div>
+                    <h3 class="text-xl font-black mb-4">リアルタイム位置</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">WebRTC技術により、地図上のバスが滑らかに動きます。遅延のない正確な位置情報を把握できます。</p>
+                </div>
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center text-2xl mb-8">🔔</div>
+                    <h3 class="text-xl font-black mb-4">到着通知</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">バス停への接近を自動検知。忙しい朝でも、スマホへの通知で適切なタイミングで準備ができます。</p>
+                </div>
+                <div class="bg-white p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+                    <div class="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center text-2xl mb-8">🔒</div>
+                    <h3 class="text-xl font-black mb-4">プライバシー保護</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">AES-256によるエンドツーエンド暗号化（E2EE）を実装。位置情報や個人情報は送信前に端末内で暗号化され、サーバー側でも解読不能な状態で管理されます。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Encryption Animation Section -->
+    <section class="py-24 px-6 overflow-hidden">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-6">強固なセキュリティ: E2EE</h2>
+                <p class="text-slate-500 font-bold max-w-2xl mx-auto">
+                    AES-256による「エンドツーエンド暗号化」により、位置情報や個人情報は送信前にデバイス内で暗号化されます。
+                </p>
+            </div>
+
+            <div class="relative bg-slate-900 rounded-[3rem] p-8 md:p-16 text-white shadow-2xl">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-12 items-center relative z-10">
+                    <!-- Sender Side -->
+                    <div class="text-center space-y-4">
+                        <div class="relative w-24 h-24 mx-auto">
+                            <div class="absolute inset-0 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-lg animate-drive">
+                                <i class="fas fa-bus"></i>
+                            </div>
+                        </div>
+                        <p class="font-black">バス (送信元)</p>
+                        <div class="bg-white/10 p-4 rounded-2xl text-[10px] text-left border border-white/10 backdrop-blur-sm">
+                            <p class="text-blue-400 font-bold mb-1">RAW DATA</p>
+                            <p>緯度: 35.6812</p>
+                            <p>経度: 139.7671</p>
+                            <p>速度: 25km/h</p>
+                        </div>
+                        <div class="flex justify-center text-yellow-400 animate-pulse">
+                            <i class="fas fa-lock mr-2"></i>
+                            <span class="text-xs font-black uppercase">Device Encryption</span>
+                        </div>
+                    </div>
+
+                    <!-- Cloud -->
+                    <div class="text-center space-y-6 relative">
+                        <div class="w-24 h-24 bg-white/5 rounded-full mx-auto flex items-center justify-center text-5xl border border-white/10 backdrop-blur-xl">
+                            <i class="fas fa-cloud text-slate-500"></i>
+                        </div>
+                        <p class="text-slate-400 font-bold">クラウドサーバー</p>
+                        <div class="bg-red-500/10 p-4 rounded-2xl text-[10px] text-center border border-red-500/20 scrambled text-red-400">
+                            U2FsdGVkX1+vGz8...<br>
+                            (解読不能なデータ)
+                        </div>
+                        <p class="text-[10px] text-slate-500 italic">サーバー運営者でも中身は見られません</p>
+
+                        <!-- Flow Lines -->
+                        <div class="hidden md:block absolute top-1/2 left-[-50%] w-full h-1 pointer-events-none">
+                            <div class="data-particle" style="animation-delay: 0s"></div>
+                            <div class="data-particle" style="animation-delay: 1s; background: #fbbf24"></div>
+                            <div class="data-particle" style="animation-delay: 2s"></div>
+                        </div>
+                        <div class="hidden md:block absolute top-1/2 left-[50%] w-full h-1 pointer-events-none">
+                            <div class="data-particle" style="animation-delay: 0.5s"></div>
+                            <div class="data-particle" style="animation-delay: 1.5s; background: #fbbf24"></div>
+                        </div>
+                    </div>
+
+                    <!-- Receiver Side -->
+                    <div class="text-center space-y-4">
+                        <div class="relative w-24 h-24 mx-auto">
+                            <div class="absolute inset-0 bg-green-600 rounded-3xl mx-auto flex items-center justify-center text-4xl shadow-lg animate-user-check">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-xl shadow-xl flex items-center justify-center text-green-600 border-2 border-green-500 animate-phone-glow">
+                                <i class="fas fa-mobile-alt text-lg"></i>
+                            </div>
+                        </div>
+                        <p class="font-black">保護者 (受信先)</p>
+                        <div class="bg-white/10 p-4 rounded-2xl text-[10px] text-left border border-white/10 backdrop-blur-sm">
+                            <p class="text-green-400 font-bold mb-1">DECRYPTED</p>
+                            <p>到着予定: あと3分</p>
+                            <p>距離: 800m</p>
+                        </div>
+                        <div class="flex justify-center text-green-400">
+                            <i class="fas fa-key mr-2"></i>
+                            <span class="text-xs font-black uppercase">Decrypted on Device</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Abstract background elements -->
+                <div class="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+                    <div class="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-600 rounded-full blur-[100px]"></div>
+                    <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-indigo-600 rounded-full blur-[100px]"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center font-bold">1</div>
+                    <div>
+                        <h4 class="font-black mb-2">秘密鍵は端末内にのみ存在</h4>
+                        <p class="text-slate-500 text-sm">暗号化に必要な秘密鍵は、利用開始時の「招待コード」から生成され、利用者のブラウザ内（localStorage）にのみ安全に保管されます。ネットワーク上を流れることはありません。</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <div class="w-10 h-10 bg-slate-100 rounded-full flex-shrink-0 flex items-center justify-center font-bold">2</div>
+                    <div>
+                        <h4 class="font-black mb-2">軍事レベルの暗号規格</h4>
+                        <p class="text-slate-500 text-sm">米国政府も採用する暗号化規格「AES-256」を採用。現在のスーパーコンピュータでも数億年かかると言われる強度でデータを守ります。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section class="py-24 px-6">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-5xl font-black mb-4">ご利用プラン</h2>
+                <p class="text-slate-400 font-bold">ご利用形態に合わせた最適なプラン</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
+                <!-- Education Plan -->
+                <div class="bg-white p-10 rounded-[3rem] border-4 border-blue-600 relative overflow-hidden shadow-2xl">
+                    <div class="absolute top-0 right-0 bg-blue-600 text-white px-6 py-2 rounded-bl-2xl font-black text-xs">おすすめ</div>
+                    <h3 class="text-2xl font-black mb-2">教育機関プラン</h3>
+                    <p class="text-slate-400 text-sm mb-8 font-bold">幼稚園・保育園・小学校向け</p>
+                    <div class="mb-8">
+                        <span class="text-5xl font-black">¥0</span>
+                        <span class="text-slate-400 font-bold"> / 月</span>
+                    </div>
+                    <ul class="space-y-4 mb-10 text-sm font-bold text-slate-600">
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 複数路線の登録</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 保護者用Webアプリ利用</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 緊急テロップ配信</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-500 mr-3"></i> 最優先サポート</li>
+                    </ul>
+                    <div class="w-full bg-slate-100 text-slate-400 py-4 rounded-2xl text-center font-black text-sm">
+                        只今新規契約の受け付けを停止しています
+                    </div>
+                </div>
+                <!-- Company Plan -->
+                <div class="bg-slate-50 p-10 rounded-[3rem] border border-slate-200">
+                    <h3 class="text-2xl font-black mb-2">一般・法人プラン</h3>
+                    <p class="text-slate-400 text-sm mb-8 font-bold">民間バス・企業送迎向け</p>
+                    <div class="mb-8">
+                        <span class="text-5xl font-black">個別見積</span>
+                    </div>
+                    <ul class="space-y-4 mb-10 text-sm font-bold text-slate-600">
+                        <li class="flex items-center"><i class="fas fa-check text-blue-500 mr-3"></i> 高度な管理機能</li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-500 mr-3"></i> 独自ドメイン対応</li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-500 mr-3"></i> 優先サポート</li>
+                    </ul>
+                    <div class="w-full bg-slate-200 text-slate-400 py-4 rounded-2xl text-center font-black text-sm leading-relaxed">
+                        個人、法人向けのプランは<br>現在提供しておりません
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-20 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-3 mb-10 md:mb-0">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl shadow-lg">🚌</div>
+                <span class="text-xl font-black tracking-tighter">Bus-Location-Checker</span>
+            </div>
+            <div class="flex space-x-10 text-slate-400 font-bold text-sm">
+                <button onclick="goToPortal()" class="hover:text-white transition">ログイン</button>
+                <a href="guide.html" class="hover:text-white transition">使い方ガイド</a>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto mt-20 pt-10 border-t border-slate-800 text-center text-slate-500 text-xs font-bold uppercase tracking-[0.2em]">
+            © 2026 Bus-Location-Checker. All Rights Reserved.
+        </div>
+    </footer>
+
+    <script>
+        function goToPortal() {
+            window.location.href = 'login.html';
+        }
+    </script>
+
+</body>
+</html>

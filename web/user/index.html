@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bus-Location-Checker - ユーザー</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../shared/utils.js"></script>
+    <style>
+        #map { height: 100vh; width: 100%; z-index: 1; }
+        .leaflet-routing-container { display: none !important; }
+        .leaflet-container { font-family: inherit; }
+
+        .custom-bus-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ff3b30;
+            border: 4px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(255, 59, 48, 0.6);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2.4); opacity: 0; }
+        }
+
+        @keyframes btn-glow {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 20px 10px rgba(59, 130, 246, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .animate-glow { animation: btn-glow 0.8s ease-out; }
+        .bus-pulse::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #ff3b30;
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+            z-index: -1;
+            top: 0;
+            left: 0;
+        }
+
+        .custom-stop-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border: 2px solid #007aff;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.5s ease;
+        }
+        .stop-passed {
+            border-color: #94a3b8 !important;
+            background: #f8fafc !important;
+            opacity: 0.6;
+        }
+        .stop-mine {
+            border-color: #f59e0b !important;
+            border-width: 4px !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.5) !important;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        #info-panel {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+            max-height: 85vh;
+            overflow-y: auto;
+            scrollbar-width: none; /* Hide scrollbar for Chrome/Safari */
+        }
+        #info-panel::-webkit-scrollbar { display: none; }
+
+        .panel-hidden {
+            transform: translateY(-20px) scale(0.95);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Hide map elements during login */
+        .login-active #map-section {
+            display: none !important;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+            animation: marquee 15s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen overflow-hidden login-active">
+    <div id="emergency-banner" class="hidden fixed top-0 left-0 right-0 z-[2000] bg-red-600 text-white py-3 overflow-hidden">
+        <div class="animate-marquee whitespace-nowrap inline-block px-10 font-black text-sm uppercase tracking-wider" id="emergency-text">---</div>
+    </div>
+    <div id="app">
+        <!-- Login Section -->
+        <div id="login-section" class="flex items-center justify-center min-h-screen p-4 transition-all duration-500 overflow-y-auto">
+            <div class="max-w-[440px] w-full bg-white p-6 sm:p-10 rounded-[2.5rem] shadow-2xl border border-slate-100 my-8">
+                <div class="flex justify-center mb-6">
+                    <div class="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center text-4xl shadow-inner rotate-3">🚌</div>
+                </div>
+                <h2 class="text-3xl font-black mb-2 text-center text-slate-800 tracking-tight leading-tight">Bus-Location-Checker</h2>
+                <div id="login-view" class="animate-fade-in space-y-6">
+                    <p class="text-slate-400 text-center mb-6 text-sm font-medium">Googleアカウントでログイン</p>
+                    <button onclick="loginWithGoogle()" class="w-full bg-white border border-slate-200 text-slate-700 py-5 rounded-2xl font-black text-lg flex items-center justify-center space-x-4 hover:bg-slate-50 transition-all shadow-sm active:scale-[0.98]">
+                        <svg class="w-7 h-7" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z"/></svg>
+                        <span>Googleでログイン</span>
+                    </button>
+                    <div class="relative py-2">
+                        <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-100"></div></div>
+                        <div class="relative flex justify-center text-[10px] uppercase font-black text-slate-300 bg-white px-2">OR</div>
+                    </div>
+                    <button onclick="showRegister()" class="w-full bg-slate-50 text-slate-500 py-4 rounded-2xl font-black text-base hover:bg-slate-100 transition-all">新規バス利用登録（初回）</button>
+                </div>
+
+                <div id="registration-view" class="hidden animate-fade-in space-y-5">
+                    <p class="text-slate-400 text-center mb-4 text-sm font-medium">バス利用情報の登録</p>
+                    <div id="registration-fields" class="space-y-5">
+                        <div class="group">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">招待コード</label>
+                            <input type="text" id="invite-code" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="0000:xxxx...">
+                        </div>
+                        <div class="group">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">保護者名</label>
+                            <input type="text" id="parent-name" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="山田 太郎">
+                        </div>
+                        <div class="group">
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1 group-focus-within:text-red-500 transition-colors">クラス名</label>
+                            <input type="text" id="parent-class" class="w-full p-4 sm:p-5 bg-slate-50 rounded-2xl border border-slate-200 focus:ring-4 focus:ring-red-500/10 focus:border-red-500 outline-none transition-all text-base sm:text-lg font-bold" placeholder="ひまわり組">
+                        </div>
+                        <button onclick="register()" class="w-full bg-red-500 text-white py-4 sm:py-5 rounded-2xl font-black text-lg hover:bg-red-600 shadow-xl shadow-red-200 transition-all active:scale-[0.98] mt-4">情報を入力して次へ</button>
+                        <button onclick="showLogin()" class="w-full text-slate-400 py-2 font-bold text-xs">ログイン画面に戻る</button>
+                    </div>
+
+                    <div id="google-auth-container" class="hidden animate-fade-in space-y-5 pt-4 border-t border-slate-100 text-center">
+                        <p class="text-xs font-bold text-slate-500">アカウントを連携して登録を完了します</p>
+                        <button onclick="loginWithGoogle()" class="w-full bg-white border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-base flex items-center justify-center space-x-3 hover:bg-slate-50 transition-all shadow-sm">
+                            <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 12-4.53z"/></svg>
+                            <span>Googleでログインして登録完了</span>
+                        </button>
+                    </div>
+                </div>
+
+                    <p id="error" class="text-red-500 text-xs hidden text-center font-bold bg-red-50 p-4 rounded-2xl border border-red-100"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Section -->
+        <div id="map-section" class="hidden opacity-0 transition-all duration-700">
+            <header id="info-panel" class="fixed top-4 left-4 right-4 sm:top-6 sm:left-6 sm:right-6 md:left-1/2 md:-translate-x-1/2 md:w-full md:max-w-2xl z-[1000] panel-hidden">
+                <div id="bus-selector" class="mb-3 flex flex-wrap gap-2 justify-center md:justify-start"></div>
+                <div class="glass-panel p-4 sm:p-6 rounded-[1.5rem] sm:rounded-[2.25rem] shadow-2xl border border-white/60 flex justify-between items-center ring-1 ring-black/5">
+                    <div class="flex-1 min-w-0 pr-4">
+                        <h1 id="route-name" class="text-base sm:text-xl font-black text-slate-800 leading-tight truncate">読み込み中...</h1>
+                        <div class="flex flex-wrap items-center mt-1.5 gap-y-1">
+                            <div class="flex items-center mr-3">
+                                <span class="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span>
+                                <p id="vehicle-num" class="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">車両 --</p>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="hidden sm:inline mx-2 text-slate-200">|</span>
+                                <p id="distance-est" class="text-[9px] sm:text-[10px] font-black text-blue-500 uppercase tracking-widest whitespace-nowrap">距離測定中...</p>
+                                <span class="mx-2 text-slate-200">|</span>
+                                <p id="speed-display" class="text-[9px] sm:text-[10px] font-black text-green-500 uppercase tracking-widest whitespace-nowrap">--- km/h</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="toggleInfo()" class="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-400 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Floating Action Buttons -->
+            <div class="fixed bottom-6 right-6 sm:bottom-10 sm:right-10 z-[1000] flex flex-col items-end space-y-4">
+                <!-- Auto Follow Toggle -->
+                <button id="btn-follow" onclick="toggleAutoFollow()" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-slate-400 active:scale-90 transition-all hover:border-red-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">自動追従</span>
+                </button>
+                <!-- Center on Bus -->
+                <button onclick="centerOnBus(this)" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-slate-500 active:scale-90 transition-all hover:bg-slate-50/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9.003 9.003 0 008.367-5.633M12 21a9.003 9.003 0 01-8.367-5.633M12 21V12m0 0l3 3m-3-3l-3 3M12 3a9 9 0 010 18" />
+                    </svg>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">バスを探す</span>
+                </button>
+                <!-- Info Visibility Toggle (New Mobile Friendly) -->
+                <button onclick="toggleInfo()" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-blue-500 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-7 sm:w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">運行情報</span>
+                </button>
+                <!-- Logout -->
+                <button onclick="logout()" class="glass-panel w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-2xl border border-white/40 flex flex-col items-center justify-center text-slate-300 hover:text-red-400 transition-all active:scale-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span class="text-[7px] sm:text-[8px] font-black uppercase mt-0.5">終了</span>
+                </button>
+            </div>
+
+            <div id="map"></div>
+
+            <!-- Legend and Status -->
+            <div class="fixed bottom-6 left-6 sm:bottom-10 sm:left-10 z-[1000] flex flex-col items-start space-y-3 pointer-events-none transition-all">
+                <div class="glass-panel p-3 sm:p-4 rounded-2xl shadow-xl border border-white/40 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] flex flex-col space-y-2.5 pointer-events-auto">
+                    <div class="flex items-center"><span class="w-2.5 h-2.5 bg-purple-500 rounded-full mr-2.5 shadow-sm shadow-purple-200"></span> 走行予定</div>
+                    <div class="flex items-center"><span class="w-2.5 h-2.5 bg-slate-400 rounded-full mr-2.5 shadow-sm shadow-slate-200"></span> 通過済み</div>
+                    <div class="flex items-center"><span class="w-2.5 h-2.5 bg-amber-500 rounded-full mr-2.5 shadow-sm shadow-amber-200"></span> 自分のバス停</div>
+                </div>
+                <div id="status-badge" class="hidden glass-panel px-4 py-3 rounded-2xl shadow-xl border border-red-100/50 text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] text-red-500 flex items-center space-x-3 pointer-events-auto ring-2 ring-red-50/50">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                    <span>時間外 / 停止中</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, where, addDoc, serverTimestamp, setDoc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
+        const app = initializeApp(window.firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        let map, busMarker, stopsMarkers = [], routePolyline, routingControl, basePolyline;
+        let currentBusPos = null;
+        let isAutoFollow = true;
+        let routeRefreshInterval = null;
+        let pc = null;
+        let myStopId = null;
+
+        window.allAuths = JSON.parse(localStorage.getItem('user_auths')) || [];
+        window.authData = window.allAuths[0];
+
+        let pendingRegistration = null;
+
+        window.showRegister = () => {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('registration-view').classList.remove('hidden');
+        };
+
+        window.showLogin = () => {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('registration-view').classList.add('hidden');
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                if (pendingRegistration) {
+                    await finalizeRegistration(user);
+                    return;
+                }
+                const metaDoc = await getDoc(doc(db, "users_meta", user.uid));
+                if (metaDoc.exists()) {
+                    const data = metaDoc.data();
+                    window.allAuths = data.registeredBuses || [];
+                    localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+                    if (window.allAuths.length > 0) {
+                        window.authData = window.allAuths[0];
+                        window.showMap();
+                    } else {
+                        // User exists but has no buses, show registration
+                        document.body.classList.add('login-active');
+                        window.showRegister();
+                    }
+                } else {
+                    // New user from Google Login, show registration
+                    document.body.classList.add('login-active');
+                    window.showRegister();
+                }
+            } else {
+                // Not logged in, show login view
+                document.body.classList.add('login-active');
+                window.showLogin();
+            }
+        });
+
+        window.loginWithGoogle = async () => {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                // The onAuthStateChanged will handle the view switch if meta exists
+            } catch (e) {
+                console.error("Auth failed", e);
+                document.getElementById('error').innerText = "認証に失敗しました";
+                document.getElementById('error').classList.remove('hidden');
+            }
+        };
+
+        window.register = async () => {
+            const code = document.getElementById('invite-code').value.trim();
+            const name = document.getElementById('parent-name').value.trim();
+            const cls = document.getElementById('parent-class').value.trim();
+
+            const decoded = window.Encryption.decodeInviteCode(code);
+            if (!decoded || !name || !cls) {
+                const errEl = document.getElementById('error');
+                errEl.innerText = "入力内容が正しくありません";
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('error').classList.add('hidden');
+            pendingRegistration = { code, name, cls, decoded };
+            document.getElementById('registration-fields').classList.add('hidden');
+            document.getElementById('google-auth-container').classList.remove('hidden');
+
+            if (auth.currentUser) {
+                finalizeRegistration(auth.currentUser);
+            }
+        };
+
+        async function finalizeRegistration(user) {
+            const { code, name, cls, decoded } = pendingRegistration;
+            pendingRegistration = null;
+
+            try {
+                const now = new Date();
+                const year = now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
+
+                const metaRef = doc(db, "users_meta", user.uid);
+                const metaSnap = await getDoc(metaRef);
+                let registeredBuses = metaSnap.exists() ? (metaSnap.data().registeredBuses || []) : [];
+
+                if (!registeredBuses.find(b => b.busId === decoded.busId)) {
+                    registeredBuses.push({ busId: decoded.busId, key: decoded.key, myStopId: null });
+                }
+
+                await setDoc(metaRef, {
+                    name,
+                    class: cls,
+                    registeredBuses,
+                    updatedAt: serverTimestamp(),
+                    regYear: year.toString()
+                }, { merge: true });
+
+                await setDoc(doc(db, "config", "fiscalYears"), { [year]: true }, { merge: true });
+                await addDoc(collection(db, "users"), {
+                    uid: user.uid,
+                    busId: decoded.busId,
+                    encryptedName: window.Encryption.encrypt(name, decoded.key),
+                    encryptedClass: window.Encryption.encrypt(cls, decoded.key),
+                    createdAt: serverTimestamp(),
+                    regYear: year.toString()
+                });
+
+                window.allAuths = registeredBuses;
+                localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+                window.authData = decoded;
+                window.showMap();
+            } catch (e) {
+                console.error("Finalize error:", e);
+                document.getElementById('error').innerText = "登録に失敗しました";
+                document.getElementById('error').classList.remove('hidden');
+            }
+        }
+
+        window.logout = async () => {
+            if (confirm("ログアウトしますか？")) {
+                await signOut(auth);
+                localStorage.removeItem('user_auths');
+                location.reload();
+            }
+        };
+
+        window.showMap = async () => {
+            if (auth.currentUser) {
+                const metaDoc = await getDoc(doc(db, "users_meta", auth.currentUser.uid));
+                if (metaDoc.exists()) {
+                    const busInfo = metaDoc.data().registeredBuses.find(b => b.busId === window.authData.busId);
+                    if (busInfo) myStopId = busInfo.myStopId;
+                }
+            }
+            if (window.allAuths.length > 0) {
+                const sel = document.getElementById('bus-selector');
+                sel.innerHTML = '';
+                for (let i=0; i<window.allAuths.length; i++) {
+                    const authObj = window.allAuths[i];
+                    const btn = document.createElement('button');
+                    btn.className = `px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md flex items-center space-x-2 ${i === 0 ? 'bg-slate-900 text-white' : 'bg-white text-slate-400 border border-slate-100'}`;
+
+                    // Fetch route name for button
+                    const bDoc = await getDoc(doc(db, "buses", authObj.busId));
+                    const bName = bDoc.exists() ? window.Encryption.decrypt(bDoc.data().metadata.encryptedRouteName, authObj.key) : `バス ${i+1}`;
+
+                    btn.innerHTML = `<span>🚌</span> <span>${bName}</span>`;
+                    btn.onclick = () => window.switchBus(i);
+                    sel.appendChild(btn);
+                }
+
+                // "Add Bus" button
+                const addBtn = document.createElement('button');
+                addBtn.className = "px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all shadow-md bg-blue-500 text-white flex items-center space-x-2";
+                addBtn.innerHTML = "<span>＋</span> <span>別のバスを登録</span>";
+                addBtn.onclick = () => {
+                    const mapSec = document.getElementById('map-section');
+                    const loginSec = document.getElementById('login-section');
+                    document.body.classList.add('login-active');
+                    mapSec.classList.add('opacity-0');
+                    setTimeout(() => {
+                        mapSec.classList.add('hidden');
+                        loginSec.classList.remove('hidden');
+                        window.showRegister();
+                        document.getElementById('registration-fields').classList.remove('hidden');
+                        setTimeout(() => loginSec.classList.remove('opacity-0'), 50);
+                    }, 500);
+                };
+                sel.appendChild(addBtn);
+            }
+
+            try {
+                requestNotificationPermission();
+            } catch (e) {
+                console.error("Notification permission error", e);
+            }
+
+            const loginSec = document.getElementById('login-section');
+            const mapSec = document.getElementById('map-section');
+
+            document.body.classList.remove('login-active');
+            loginSec.classList.add('opacity-0');
+            setTimeout(() => {
+                loginSec.classList.add('hidden');
+                mapSec.classList.remove('hidden');
+                setTimeout(() => {
+                    mapSec.classList.remove('opacity-0');
+                    if (map) {
+                        map.invalidateSize();
+                        if (currentBusPos) map.setView(currentBusPos, map.getZoom());
+                    }
+                }, 100);
+                initMap();
+                startTracking();
+                initWebRTC();
+            }, 500);
+        };
+
+        window.toggleInfo = () => {
+            document.getElementById('info-panel').classList.toggle('panel-hidden');
+        };
+
+        function initMap() {
+            if (map) return;
+            window.map = map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([35.6812, 139.7671], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            const busIcon = L.divIcon({
+                html: `<div class="custom-bus-icon bus-pulse text-3xl"><span>🚌</span></div>`,
+                className: '',
+                iconSize: [64, 64],
+                iconAnchor: [32, 32]
+            });
+            busMarker = L.marker([0,0], {icon: busIcon, zIndexOffset: 1000}).addTo(map);
+
+            busMarker.on('click', () => {
+                document.getElementById('info-panel').classList.remove('panel-hidden');
+            });
+
+            const btn = document.getElementById('btn-follow');
+            btn.classList.add('border-red-100', 'text-red-500');
+        }
+
+        async function requestNotificationPermission() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    const messaging = getMessaging(app);
+                    /**
+                     * NOTE: Replace 'YOUR_PUBLIC_VAPID_KEY' with the key from
+                     * Firebase Console > Project Settings > Cloud Messaging > Web configuration
+                     */
+                    const token = await getToken(messaging, { vapidKey: 'B...' });
+                    if (token) {
+                        await setDoc(doc(db, "fcmTokens", token), {
+                            uid: getAuth(app).currentUser.uid,
+                            busId: window.authData.busId,
+                            updatedAt: serverTimestamp()
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("FCM failed", e);
+            }
+        }
+
+        async function initWebRTC() {
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            let signalingId = null;
+            const pendingCandidates = [];
+
+            const dc = pc.createDataChannel("location");
+            dc.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                updateBusLocation(data.location, null);
+            };
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    if (signalingId) {
+                        addDoc(collection(db, "signaling"), {
+                            busId: window.authData.busId,
+                            targetId: signalingId,
+                            type: 'candidate',
+                            candidate: e.candidate.toJSON(),
+                            from: 'user'
+                        });
+                    } else {
+                        pendingCandidates.push(e.candidate.toJSON());
+                    }
+                }
+            };
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            const signalingRef = await addDoc(collection(db, "signaling"), {
+                busId: window.authData.busId,
+                offer: { type: offer.type, sdp: offer.sdp },
+                status: 'new',
+                createdAt: serverTimestamp()
+            });
+            signalingId = signalingRef.id;
+
+            for (const cand of pendingCandidates) {
+                addDoc(collection(db, "signaling"), {
+                    busId: window.authData.busId,
+                    targetId: signalingId,
+                    type: 'candidate',
+                    candidate: cand,
+                    from: 'user'
+                });
+            }
+
+            onSnapshot(doc(db, "signaling", signalingId), async (snap) => {
+                const data = snap.data();
+                if (data.answer && !pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+            });
+
+            onSnapshot(query(collection(db, "signaling"), where("targetId", "==", signalingId), where("from", "==", "bus")), (snap) => {
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        pc.addIceCandidate(new RTCIceCandidate(change.doc.data().candidate));
+                    }
+                });
+            });
+        }
+
+        window.toggleAutoFollow = () => {
+            isAutoFollow = !isAutoFollow;
+            const btn = document.getElementById('btn-follow');
+            if (isAutoFollow) {
+                btn.classList.add('border-red-100', 'text-red-500');
+                btn.classList.remove('text-slate-400');
+                if (currentBusPos) map.panTo(currentBusPos);
+            } else {
+                btn.classList.remove('border-red-100', 'text-red-500');
+                btn.classList.add('text-slate-400');
+            }
+        };
+
+        window.centerOnBus = (btn) => {
+            if (currentBusPos) {
+                const el = btn || document.querySelector('button[onclick*="centerOnBus"]');
+                el.classList.add('animate-glow');
+                setTimeout(() => el.classList.remove('animate-glow'), 800);
+
+                map.flyTo(currentBusPos, 16, { animate: true, duration: 1.5 });
+                if (!isAutoFollow) toggleAutoFollow();
+            }
+        };
+
+        let masterRoutePoints = [];
+
+        window.setMyStop = async (id) => {
+            myStopId = id;
+            if (auth.currentUser) {
+                const metaRef = doc(db, "users_meta", auth.currentUser.uid);
+                const busIdx = window.allAuths.findIndex(b => b.busId === window.authData.busId);
+                if (busIdx !== -1) {
+                    window.allAuths[busIdx].myStopId = id;
+                    await updateDoc(metaRef, { registeredBuses: window.allAuths });
+                    localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+                }
+            }
+            alert("自分のバス停を設定しました");
+            map.closePopup();
+            updateRouteStyles();
+        };
+
+        let detailedRoutePoints = [];
+
+        async function updateDetailedRoute() {
+            if (routingControl) map.removeControl(routingControl);
+            if (basePolyline) map.removeLayer(basePolyline);
+
+            if (masterRoutePoints.length < 2) {
+                detailedRoutePoints = [];
+                updateRouteStyles();
+                return;
+            }
+
+            routingControl = L.Routing.control({
+                waypoints: masterRoutePoints.map(p => L.latLng(p[0], p[1])),
+                router: L.Routing.osrmv1({
+                    serviceUrl: 'https://router.project-osrm.org/route/v1'
+                }),
+                createMarker: () => null,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: false,
+                lineOptions: { styles: [{ opacity: 0 }] }
+            }).on('routesfound', (e) => {
+                const route = e.routes[0];
+                detailedRoutePoints = route.coordinates.map(c => [c.lat, c.lng]);
+
+                // Draw base gray line (full road path)
+                basePolyline = L.polyline(detailedRoutePoints, {
+                    color: '#94a3b8',
+                    weight: 6,
+                    opacity: 0.4,
+                    lineJoin: 'round'
+                }).addTo(map);
+
+                updateRouteStyles();
+            }).on('routingerror', (e) => {
+                console.warn("Routing failed, falling back to straight lines.", e);
+                detailedRoutePoints = masterRoutePoints;
+
+                basePolyline = L.polyline(detailedRoutePoints, {
+                    color: '#94a3b8',
+                    weight: 6,
+                    opacity: 0.2,
+                    lineJoin: 'round',
+                    dashArray: '10, 10'
+                }).addTo(map);
+
+                updateRouteStyles();
+            }).addTo(map);
+        }
+
+        function updateRouteStyles() {
+            if (!currentBusPos || detailedRoutePoints.length === 0) return;
+            if (routePolyline) map.removeLayer(routePolyline);
+
+            const points = detailedRoutePoints;
+
+            // Find the point on the road closest to the bus
+            let closestIdx = -1;
+            let minDist = Infinity;
+            points.forEach((p, i) => {
+                const d = map.distance(L.latLng(p[0], p[1]), currentBusPos);
+                if (d < minDist) { minDist = d; closestIdx = i; }
+            });
+
+            if (closestIdx === -1) return;
+
+            // Upcoming route is from the closest point on the road to the end
+            const upcomingPoints = points.slice(closestIdx);
+
+            // Add the bus position to the start for a smooth connection
+            upcomingPoints.unshift([currentBusPos.lat, currentBusPos.lng]);
+
+            routePolyline = L.polyline(upcomingPoints, {
+                color: '#8b5cf6',
+                weight: 6,
+                opacity: 0.8,
+                lineJoin: 'round'
+            }).addTo(map);
+
+            // Determine which stops are passed
+            if (!window.stopStatus) window.stopStatus = {};
+            let lastPassedStopIdx = -1;
+
+            masterRoutePoints.forEach((sp, si) => {
+                const stopId = stopsMarkers[si]?.stopId;
+                const d = map.distance(L.latLng(sp[0], sp[1]), currentBusPos);
+
+                // Find where this stop is on the detailed path
+                let stopDetailedIdx = -1;
+                let minSDist = Infinity;
+                points.forEach((dp, di) => {
+                    const sd = map.distance(L.latLng(dp[0], dp[1]), L.latLng(sp[0], sp[1]));
+                    if (sd < minSDist) { minSDist = sd; stopDetailedIdx = di; }
+                });
+
+                if (d <= 15) { // Slightly larger threshold for arrival detection
+                    window.stopStatus[stopId] = 'arrived';
+                    lastPassedStopIdx = si;
+                } else if (window.stopStatus[stopId] === 'arrived' || closestIdx > stopDetailedIdx + 5) {
+                    window.stopStatus[stopId] = 'passed';
+                    lastPassedStopIdx = si;
+                }
+            });
+
+            stopsMarkers.forEach((m, i) => {
+                const el = m.getElement();
+                if (el) {
+                    const iconDiv = el.querySelector('.custom-stop-icon');
+                    iconDiv.classList.toggle('stop-passed', i <= lastPassedStopIdx);
+                    iconDiv.classList.toggle('stop-mine', m.stopId === myStopId);
+                }
+            });
+        }
+
+        function updateBusLocation(encLoc, lastUpdate) {
+            const decrypted = window.Encryption.decrypt(encLoc, window.authData.key);
+            const [coords, speed] = decrypted.split(':');
+            const [lat, lng] = coords.split(',').map(Number);
+
+            if (speed !== undefined) {
+                document.getElementById('speed-display').innerText = `${speed} km/h`;
+            }
+
+            const newPos = new L.LatLng(lat, lng);
+
+            if (myStopId) {
+                const stopMarker = stopsMarkers.find(m => m.stopId === myStopId);
+                if (stopMarker) {
+                    const dist = map.distance(newPos, stopMarker.getLatLng());
+                    const mins = Math.ceil((dist / 1000) / 20 * 60); // 20km/h avg
+                    document.getElementById('distance-est').innerText = `${(dist/1000).toFixed(1)}km (約${mins}分)`;
+                }
+            }
+
+            if (lastUpdate) {
+                const diff = (Date.now() - lastUpdate.toMillis()) / 1000;
+                const badge = document.getElementById('status-badge');
+                if (diff > 360) { // 6 minutes threshold (6*60)
+                    badge.classList.remove('hidden');
+                    if (routePolyline) routePolyline.setStyle({opacity: 0.1});
+                    if (basePolyline) basePolyline.setStyle({opacity: 0.1});
+                } else {
+                    badge.classList.add('hidden');
+                    if (routePolyline) {
+                        routePolyline.setStyle({opacity: 0.8});
+                    }
+                    if (basePolyline) {
+                        basePolyline.setStyle({opacity: 0.4});
+                    }
+                }
+            }
+
+            currentBusPos = newPos;
+            busMarker.setLatLng(currentBusPos);
+            if (isAutoFollow) map.panTo(currentBusPos);
+            updateRouteStyles();
+        }
+
+        function startTracking() {
+            if (!window.authData) return;
+
+            if (routeRefreshInterval) clearInterval(routeRefreshInterval);
+            routeRefreshInterval = setInterval(() => {
+                console.log("Recalculating route (3min interval)...");
+                updateDetailedRoute();
+            }, 3 * 60 * 1000);
+
+            let globalMsg = "";
+            let busMsg = "";
+
+            const updateBanner = () => {
+                const banner = document.getElementById('emergency-banner');
+                const textEl = document.getElementById('emergency-text');
+                const msg = busMsg || globalMsg;
+                if (msg) {
+                    textEl.innerText = msg;
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            };
+
+            onSnapshot(doc(db, "config", "broadcast"), (snap) => {
+                const data = snap.data();
+                globalMsg = (data && data.message) ? data.message : "";
+                updateBanner();
+            });
+
+            onSnapshot(doc(db, "buses", window.authData.busId), (doc) => {
+                const data = doc.data();
+                if (!data) return;
+
+                busMsg = (data.status && data.status.emergencyMessage) ? data.status.emergencyMessage : "";
+                updateBanner();
+
+                if (data.status && data.status.encryptedLocation) {
+                    updateBusLocation(data.status.encryptedLocation, data.status.lastUpdated);
+                }
+                if (data.metadata) {
+                    document.getElementById('route-name').innerText = window.Encryption.decrypt(data.metadata.encryptedRouteName, window.authData.key);
+                    document.getElementById('vehicle-num').innerText = "車両番号: " + window.Encryption.decrypt(data.metadata.encryptedVehicleNumber, window.authData.key);
+                }
+            });
+
+            const stopIcon = L.divIcon({
+                html: `<div class="custom-stop-icon text-sm">🚏</div>`,
+                className: '',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const q = query(collection(db, "busStops"), where("busId", "==", window.authData.busId));
+            onSnapshot(q, (snapshot) => {
+                stopsMarkers.forEach(m => map.removeLayer(m));
+                const sortedStops = snapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                masterRoutePoints = sortedStops.map(stop => {
+                    const loc = window.Encryption.decrypt(stop.encryptedLocation, window.authData.key);
+                    return loc.split(',').map(Number);
+                });
+
+                updateDetailedRoute();
+
+                stopsMarkers = sortedStops.map((stop, idx) => {
+                    const name = window.Encryption.decrypt(stop.encryptedName, window.authData.key);
+                    const loc = window.Encryption.decrypt(stop.encryptedLocation, window.authData.key);
+                    const [lat, lng] = loc.split(',').map(Number);
+                    const m = L.marker([lat, lng], {icon: stopIcon}).addTo(map).bindPopup(`
+                        <div class="p-4 flex flex-col items-center space-y-3">
+                            <div class="font-black text-slate-800 text-center">${name}</div>
+                            <button onclick="setMyStop('${stop.id}')" class="px-4 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl shadow-lg shadow-blue-200">ここを自分のバス停にする</button>
+                        </div>
+                    `);
+                    m.stopIdx = idx;
+                    m.stopId = stop.id;
+                    return m;
+                });
+            });
+        }
+
+        window.switchBus = (idx) => {
+            window.allAuths.splice(0, 0, window.allAuths.splice(idx, 1)[0]);
+            localStorage.setItem('user_auths', JSON.stringify(window.allAuths));
+            location.reload();
+        };
+
+    </script>
+</body>
+</html>

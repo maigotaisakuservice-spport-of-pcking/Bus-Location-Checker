@@ -1,0 +1,30 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "gas/**",
+      "mobile/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/admin/**",
+        "destination": "/web/admin/index.html"
+      },
+      {
+        "source": "/user/**",
+        "destination": "/web/user/index.html"
+      },
+      {
+        "source": "/sender/**",
+        "destination": "/web/sender/index.html"
+      }
+    ]
+  }
+}

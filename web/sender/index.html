@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bus-Location-Checker - 運転手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="../shared/utils.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-4">
+    <div id="app" class="max-w-md w-full bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+        <!-- Login -->
+        <div id="login-section">
+            <h2 class="text-2xl font-black mb-6 text-center leading-tight">Bus-Location-Checker</h2>
+            <div class="space-y-4">
+                <input type="text" id="invite-code" class="w-full p-4 bg-slate-700 rounded-2xl border border-slate-600 outline-none text-center text-lg" placeholder="招待コードを入力">
+                <button onclick="login()" class="w-full bg-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-700 transition-all">ログイン</button>
+                <p id="login-error" class="text-red-500 text-center hidden"></p>
+            </div>
+        </div>
+
+        <!-- Sender -->
+        <div id="sender-section" class="hidden text-center">
+            <div class="mb-8">
+                <h1 id="route-name" class="text-xl font-bold mb-2">---</h1>
+                <p id="vehicle-num" class="text-slate-400">車両番号: ---</p>
+            </div>
+
+            <div class="relative w-48 h-48 mx-auto mb-8">
+                <div id="status-ring" class="absolute inset-0 border-8 border-slate-700 rounded-full"></div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span id="status-text" class="text-lg font-bold">停止中</span>
+                    <span id="last-update" class="text-[10px] text-slate-500 mt-1">--:--:--</span>
+                </div>
+            </div>
+
+            <button id="toggle-btn" onclick="toggleTracking()" class="w-full bg-green-600 py-6 rounded-3xl text-2xl font-black shadow-lg shadow-green-900/20 active:scale-95 transition-all">
+                送信開始
+            </button>
+
+            <p class="text-[10px] text-slate-500 mt-6 leading-relaxed">
+                ※送信中は画面を閉じないでください。<br>
+                ※スリープ防止機能を有効にしています。
+            </p>
+            <button onclick="logout()" class="mt-8 text-slate-500 text-sm underline">ログアウト</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, updateDoc, getDoc, getDocs, serverTimestamp, collection, onSnapshot, addDoc, setDoc, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const app = initializeApp(window.firebaseConfig);
+        const db = getFirestore(app);
+
+        let authData = JSON.parse(localStorage.getItem('sender_auth'));
+        let watchId = null;
+        let wakeLock = null;
+        let lastUpdateTime = 0;
+        let lastWebRTCUpdateTime = 0;
+        const UPDATE_INTERVAL = 300000; // 5 minutes
+        const WEBRTC_INTERVAL = 3000; // 3 seconds
+        const peerConnections = {};
+        let stops = [];
+        let notifiedStops = new Set();
+
+        window.login = async () => {
+            const code = document.getElementById('invite-code').value.trim();
+            const decoded = window.Encryption.decodeInviteCode(code);
+            if (!decoded) {
+                document.getElementById('login-error').innerText = "コードが正しくありません";
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+
+            // Verify bus exists
+            const busDoc = await getDoc(doc(db, "buses", decoded.busId));
+            if (!busDoc.exists()) {
+                document.getElementById('login-error').innerText = "バスが見つかりません";
+                document.getElementById('login-error').classList.remove('hidden');
+                return;
+            }
+
+            authData = decoded;
+            localStorage.setItem('sender_auth', JSON.stringify(authData));
+            showSender();
+        };
+
+        window.logout = () => {
+            stopTracking();
+            localStorage.removeItem('sender_auth');
+            location.reload();
+        };
+
+        async function showSender() {
+            const auth = getAuth(app);
+            if (!auth.currentUser) await signInAnonymously(auth);
+
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('sender-section').classList.remove('hidden');
+
+            const busDoc = await getDoc(doc(db, "buses", authData.busId));
+            const data = busDoc.data();
+            document.getElementById('route-name').innerText = window.Encryption.decrypt(data.metadata.encryptedRouteName, authData.key);
+            document.getElementById('vehicle-num').innerText = "車両番号: " + window.Encryption.decrypt(data.metadata.encryptedVehicleNumber, authData.key);
+
+            const stopsSnap = await getDocs(query(collection(db, "busStops"), where("busId", "==", authData.busId)));
+            stops = stopsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            initWebRTC();
+        }
+
+        function initWebRTC() {
+            const q = query(collection(db, "signaling"), where("busId", "==", authData.busId), where("status", "==", "new"));
+            onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach(async (change) => {
+                    if (change.type === "added") {
+                        handleOffer(change.doc.id, change.doc.data());
+                    }
+                });
+            });
+        }
+
+        async function handleOffer(id, data) {
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            peerConnections[id] = pc;
+
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    addDoc(collection(db, "signaling"), {
+                        busId: authData.busId,
+                        targetId: id,
+                        type: 'candidate',
+                        candidate: e.candidate.toJSON(),
+                        from: 'bus'
+                    });
+                }
+            };
+
+            pc.ondatachannel = (e) => {
+                pc.dc = e.channel;
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            await setDoc(doc(db, "signaling", id), {
+                answer: { type: answer.type, sdp: answer.sdp },
+                status: 'answered'
+            }, { merge: true });
+
+            onSnapshot(query(collection(db, "signaling"), where("targetId", "==", id), where("from", "==", "user")), (snap) => {
+                snap.docChanges().forEach(change => {
+                    if (change.type === "added") {
+                        pc.addIceCandidate(new RTCIceCandidate(change.doc.data().candidate));
+                    }
+                });
+            });
+        }
+
+        window.toggleTracking = () => {
+            if (watchId) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        };
+
+        function checkArrival(lat, lng) {
+            stops.forEach(stop => {
+                const stopLoc = window.Encryption.decrypt(stop.encryptedLocation, authData.key);
+                const [sLat, sLng] = stopLoc.split(',').map(Number);
+
+                // Approx 500m
+                const dist = Math.sqrt(Math.pow(sLat - lat, 2) + Math.pow(sLng - lng, 2));
+                if (dist < 0.005 && !notifiedStops.has(stop.id)) {
+                    notifiedStops.add(stop.id);
+                    triggerNotification(stop);
+                }
+            });
+        }
+
+        async function triggerNotification(stop) {
+            // Call GAS to send push notification
+            const name = window.Encryption.decrypt(stop.encryptedName, authData.key);
+            console.log("Near stop:", name);
+            // fetch(GAS_URL, { ... })
+        }
+
+        async function startTracking() {
+            if (!navigator.geolocation) {
+                alert("位置情報が利用できません");
+                return;
+            }
+
+            // Screen Wake Lock
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {
+                console.error(err);
+            }
+
+            watchId = navigator.geolocation.watchPosition(
+                async (pos) => {
+                    const now = Date.now();
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const speed = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0; // m/s to km/h
+                    const locStr = `${lat},${lng}:${speed}`;
+                    const encLoc = window.Encryption.encrypt(locStr, authData.key);
+
+                    // Broadcast via WebRTC every 3 seconds to save data
+                    if (now - lastWebRTCUpdateTime >= WEBRTC_INTERVAL) {
+                        lastWebRTCUpdateTime = now;
+                        Object.values(peerConnections).forEach(pc => {
+                            if (pc.dc && pc.dc.readyState === "open") {
+                                pc.dc.send(JSON.stringify({ location: encLoc, ts: now }));
+                            }
+                        });
+                    }
+
+                    if (now - lastUpdateTime < UPDATE_INTERVAL) return;
+                    lastUpdateTime = now;
+
+                    checkArrival(lat, lng);
+
+                    await updateDoc(doc(db, "buses", authData.busId), {
+                        "status.encryptedLocation": encLoc,
+                        "status.lastUpdated": serverTimestamp(),
+                        "status.isActive": true
+                    });
+
+                    const timeStr = new Date(now).toLocaleTimeString();
+                    document.getElementById('last-update').innerText = timeStr;
+                    document.getElementById('status-ring').classList.replace('border-slate-700', 'border-green-500');
+                },
+                (err) => {
+                    console.error(err);
+                    alert("位置情報の取得に失敗しました: " + err.message);
+                    stopTracking();
+                },
+                { enableHighAccuracy: true, maximumAge: 0 }
+            );
+
+            const btn = document.getElementById('toggle-btn');
+            btn.innerText = "送信中 (停止する)";
+            btn.classList.replace('bg-green-600', 'bg-red-600');
+            document.getElementById('status-text').innerText = "送信中";
+        }
+
+        async function stopTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+
+            const btn = document.getElementById('toggle-btn');
+            btn.innerText = "送信開始";
+            btn.classList.replace('bg-red-600', 'bg-green-600');
+            document.getElementById('status-text').innerText = "停止中";
+            document.getElementById('status-ring').classList.replace('border-green-500', 'border-slate-700');
+
+            // Cleanup Firestore to save storage
+            try {
+                // Clear location status
+                await updateDoc(doc(db, "buses", authData.busId), {
+                    "status.encryptedLocation": "",
+                    "status.isActive": false
+                });
+
+                // Delete related signaling documents
+                const q = query(collection(db, "signaling"), where("busId", "==", authData.busId));
+                const snap = await getDocs(q);
+                const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
+                await Promise.all(deletePromises);
+
+                console.log("Cleanup complete");
+            } catch (e) {
+                console.error("Cleanup failed", e);
+            }
+        }
+
+        if (authData) showSender();
+    </script>
+</body>
+</html>
