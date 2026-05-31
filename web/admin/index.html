@@ -56,7 +56,11 @@
                 </nav>
             </div>
 
-            <div class="mt-auto p-8">
+            <div class="mt-auto p-8 space-y-4">
+                <a id="inquiry-link" href="#" target="_blank" class="w-full flex items-center justify-center space-x-3 p-4 bg-slate-800 rounded-2xl hover:bg-slate-700 transition group border border-slate-700/50">
+                    <span class="group-hover:rotate-12 transition-transform">✉️</span>
+                    <span class="font-bold text-sm">サービス事業者へ問い合わせ</span>
+                </a>
                 <button onclick="logout()" class="w-full flex items-center justify-center space-x-3 p-4 bg-slate-800 rounded-2xl hover:bg-red-600 transition group">
                     <span class="group-hover:rotate-12 transition-transform">🚪</span>
                     <span class="font-bold">ログアウト</span>
@@ -397,10 +401,10 @@
         let map, markers = [], routingControl = null;
 
         /**
-         * NOTE: Replace this with your deployed Google Apps Script Web App URL.
-         * The script source can be found in /gas/user-management.gs
+         * NOTE: Replace these with your deployed Google Apps Script Web App URLs.
          */
-        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyRkTZGF_SgEoPTR5bdTWe7BfUGumxPwKRMwuotwpLpGLgpryfzpguR_sW-LiA9GrIIjg/exec";
+        const GAS_USER_MGMT_URL = "https://script.google.com/macros/s/AKfycbyRkTZGF_SgEoPTR5bdTWe7BfUGumxPwKRMwuotwpLpGLgpryfzpguR_sW-LiA9GrIIjg/exec";
+        const GAS_INQUIRY_URL = "https://script.google.com/macros/s/.../exec";
 
         // Global functions
         window.toggleSidebar = () => document.getElementById('sidebar').classList.toggle('sidebar-hidden');
@@ -451,14 +455,21 @@
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                const adminDoc = await getDoc(doc(db, "admins", user.uid));
-                if (adminDoc.exists()) {
-                    currentUser = user;
-                    document.getElementById('auth-modal').classList.add('hidden');
-                    document.getElementById('admin-email').innerText = user.email;
-                    loadData();
-                } else {
-                    document.getElementById('auth-modal').classList.remove('hidden');
+                try {
+                    const adminDoc = await getDoc(doc(db, "admins", user.uid));
+                    if (adminDoc.exists()) {
+                        currentUser = user;
+                        document.getElementById('auth-modal').classList.add('hidden');
+                        document.getElementById('admin-email').innerText = user.email;
+                        document.getElementById('inquiry-link').href = `${GAS_INQUIRY_URL}?uid=${user.uid}`;
+                        loadData();
+                    } else {
+                        showError("管理者権限がありません。UID: " + user.uid + " をFirestoreに登録してください。");
+                        document.getElementById('auth-modal').classList.remove('hidden');
+                    }
+                } catch (err) {
+                    console.error("Auth check error:", err);
+                    showError("認証確認中にエラーが発生しました: " + err.message);
                 }
             } else {
                 document.getElementById('auth-modal').classList.remove('hidden');
@@ -470,6 +481,12 @@
                 buses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderBuses();
                 updateStats();
+            }, (err) => {
+                console.error("Buses snapshot error:", err);
+                if (err.code === 'permission-denied') {
+                    showError("データの読み取り権限がありません。管理者設定を確認してください。");
+                    document.getElementById('auth-modal').classList.remove('hidden');
+                }
             });
 
             onSnapshot(collection(db, "users"), (snapshot) => {
@@ -477,6 +494,8 @@
                 renderUsers();
                 updateStats();
                 updateYearFilter();
+            }, (err) => {
+                console.error("Users snapshot error:", err);
             });
 
             onSnapshot(collection(db, "busStops"), (snapshot) => {
@@ -485,6 +504,8 @@
                     updateMapMarkers();
                     renderStopsList();
                 }
+            }, (err) => {
+                console.error("BusStops snapshot error:", err);
             });
         }
 
@@ -662,13 +683,13 @@
         async function callGASDelete(uids) {
             try {
                 // If the GAS Web App URL is still the placeholder, skip fetch
-                if (GAS_WEB_APP_URL.includes("...")) {
+                if (GAS_USER_MGMT_URL.includes("...")) {
                     console.warn("GAS Web App URL not configured. Data deleted in Firestore, but Auth account may remain.");
                     return;
                 }
 
                 // Using text/plain avoids CORS preflight OPTIONS request in GAS
-                const response = await fetch(GAS_WEB_APP_URL, {
+                const response = await fetch(GAS_USER_MGMT_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({

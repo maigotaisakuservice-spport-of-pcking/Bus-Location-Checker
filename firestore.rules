@@ -8,7 +8,10 @@ service cloud.firestore {
 
     // Admins collection
     match /admins/{adminId} {
-      allow read: if request.auth != null && request.auth.uid == adminId;
+      // Allow any authenticated user to check their own admin status
+      allow get: if request.auth != null && request.auth.uid == adminId;
+      allow list: if isAdmin();
+
       // Admin creation should be done via Firebase Console or a separate secure process
       // to avoid exposing secrets in client-side code.
       // For initial setup, we allow the first admin if the collection is empty (optional)
