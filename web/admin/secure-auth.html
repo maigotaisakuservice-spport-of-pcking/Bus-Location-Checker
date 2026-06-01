@@ -42,11 +42,11 @@
 
         <div class="hidden" id="processing-state">
             <div class="bg-blue-50 p-4 px-6 text-xs font-bold text-blue-800 border-b border-blue-100">
-                取引内容の確認
+                認証内容の確認
             </div>
             <div class="details-row">
-                <div class="details-label">加盟店名:</div>
-                <div class="details-value">Bus-Location-Checker</div>
+                <div class="details-label">アクセス先:</div>
+                <div class="details-value">Bus-Location-Checker 管理者パネル</div>
             </div>
             <div class="details-row">
                 <div class="details-label">認証タイプ:</div>
@@ -100,19 +100,38 @@
 
                 status.innerText = "署名を検証中...";
                 const credentialId = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)));
+                console.log("Credential ID (Base64):", credentialId);
 
-                // Search for the admin in Firestore
-                const adminsSnap = await getDocs(collection(db, "admins"));
+                // Optimized Search: Check userHandle (UID) first if provided
+                const userHandle = assertion.response.userHandle;
                 let matchedAdmin = null;
                 let matchedUid = "";
 
-                adminsSnap.forEach(doc => {
-                    const data = doc.data();
-                    if (data.passkeys && data.passkeys.find(pk => pk.id === credentialId)) {
-                        matchedAdmin = data;
-                        matchedUid = doc.id;
+                if (userHandle) {
+                    const uid = new TextDecoder().decode(userHandle);
+                    console.log("User Handle found (UID):", uid);
+                    const adminDoc = await getDoc(doc(db, "admins", uid));
+                    if (adminDoc.exists()) {
+                        const data = adminDoc.data();
+                        if (data.passkeys && data.passkeys.find(pk => pk.id === credentialId)) {
+                            matchedAdmin = data;
+                            matchedUid = uid;
+                        }
                     }
-                });
+                }
+
+                // Fallback: Collection-wide search if UID check failed or was missing
+                if (!matchedAdmin) {
+                    console.log("Falling back to collection-wide search...");
+                    const adminsSnap = await getDocs(collection(db, "admins"));
+                    adminsSnap.forEach(doc => {
+                        const data = doc.data();
+                        if (data.passkeys && data.passkeys.find(pk => pk.id === credentialId)) {
+                            matchedAdmin = data;
+                            matchedUid = doc.id;
+                        }
+                    });
+                }
 
                 if (matchedAdmin) {
                     status.innerText = "認証成功。リダイレクト中...";

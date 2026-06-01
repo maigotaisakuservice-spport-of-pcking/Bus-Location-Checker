@@ -510,6 +510,11 @@
         let users = [];
         let map, markers = [], routingControl = null;
 
+        // Immediate check for session verification to hide modal early
+        if (sessionStorage.getItem('admin_verified') === 'true') {
+            document.getElementById('auth-modal').classList.add('hidden');
+        }
+
         /**
          * NOTE: Replace these with your deployed Google Apps Script Web App URLs.
          */

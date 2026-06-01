@@ -8,8 +8,10 @@ service cloud.firestore {
 
     // Admins collection
     match /admins/{adminId} {
-      // Relaxed read for passkey lookup in demo environment
-      allow read: if true;
+      // Allow read for passkey lookup in demo environment
+      allow get: if true;
+      allow list: if true;
+
       allow create: if isAdmin();
       allow update, delete: if isAdmin() && request.auth.uid == adminId;
     }
@@ -28,13 +30,13 @@ service cloud.firestore {
 
     match /users/{docId} {
       allow create: if request.resource.data.busId != null;
-      allow read: if true; // Relaxed for admin view
+      allow read: if true;
       allow update, delete: if isAdmin();
     }
 
     match /users_meta/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if true; // Relaxed for admin view
+      allow read: if true;
     }
 
     match /signaling/{docId} {
