@@ -14,27 +14,45 @@
     <style>
         #map { height: 400px; border-radius: 1.5rem; z-index: 10; }
 
-        @keyframes lds-ripple {
-            0% { top: 36px; left: 36px; width: 0; height: 0; opacity: 0; }
-            4.9% { top: 36px; left: 36px; width: 0; height: 0; opacity: 0; }
-            5% { top: 36px; left: 36px; width: 0; height: 0; opacity: 1; }
-            100% { top: 0px; left: 0px; width: 72px; height: 72px; opacity: 0; }
+        /* 3D Secure Style Animation */
+        @keyframes spinner-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        .lds-ripple {
-            display: inline-block;
+        @keyframes shield-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .tds-container {
             position: relative;
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .lds-ripple div {
+        .tds-ring {
             position: absolute;
-            border: 4px solid #3b82f6;
-            opacity: 1;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-top-color: #3b82f6;
             border-radius: 50%;
-            animation: lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+            animation: spinner-rotate 1.5s linear infinite;
         }
-        .lds-ripple div:nth-child(2) {
-            animation-delay: -0.5s;
+        .tds-ring-inner {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border: 2px solid transparent;
+            border-bottom-color: #6366f1;
+            border-radius: 50%;
+            animation: spinner-rotate 1s linear reverse infinite;
+        }
+        .tds-shield {
+            font-size: 3rem;
+            animation: shield-pulse 2s ease-in-out infinite;
+            z-index: 2;
         }
         .leaflet-routing-container { display: none !important; }
         .sidebar-transition { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -363,14 +381,29 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Passkey Loading Overlay -->
-        <div id="passkey-overlay" class="hidden fixed inset-0 z-[500] bg-slate-900/90 backdrop-blur-xl flex flex-col items-center justify-center text-white">
-            <div class="lds-ripple mb-8"><div></div><div></div></div>
-            <h2 class="text-3xl font-black mb-2 tracking-tight">認証中...</h2>
-            <p class="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">Security verification in progress</p>
-            <p id="passkey-status" class="mt-8 text-blue-400 font-mono text-sm animate-pulse">Waiting for device response...</p>
+    <!-- Passkey Loading Overlay (3D Secure Style) -->
+    <div id="passkey-overlay" class="hidden fixed inset-0 z-[3000] bg-slate-900/90 backdrop-blur-2xl flex flex-col items-center justify-center text-white text-center p-8">
+        <div class="tds-container mb-10">
+            <div class="tds-ring"></div>
+            <div class="tds-ring-inner"></div>
+            <div class="tds-shield">🛡️</div>
         </div>
+        <h2 class="text-2xl font-black mb-4 tracking-tight leading-tight">本人認証を行っています</h2>
+        <div class="space-y-1">
+            <p class="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px]">Processing Security Authentication</p>
+            <p id="passkey-status" class="text-blue-400 font-bold text-sm">デバイスの応答を待機しています...</p>
+        </div>
+        <div class="mt-12 w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full bg-blue-500 w-1/3 animate-[loading-bar_2s_infinite]"></div>
+        </div>
+        <style>
+            @keyframes loading-bar {
+                0% { transform: translateX(-100%); }
+                100% { transform: translateX(200%); }
+            }
+        </style>
     </div>
 
     <!-- Bus Settings Modal -->
@@ -1152,14 +1185,14 @@
             const overlay = document.getElementById('passkey-overlay');
             const status = document.getElementById('passkey-status');
             overlay.classList.remove('hidden');
-            status.innerText = "Requesting challenge from server...";
+            status.innerText = "セキュリティチャレンジを生成中...";
 
             try {
                 // Since this is a serverless client-side demo, we use a fixed or user-associated challenge
                 // In production, this MUST come from a secure backend.
                 const challenge = window.crypto.getRandomValues(new Uint8Array(32));
 
-                status.innerText = "Waiting for user verification...";
+                status.innerText = "デバイスで承認してください...";
                 const options = {
                     publicKey: {
                         challenge: challenge,
@@ -1170,21 +1203,18 @@
                 };
 
                 const assertion = await navigator.credentials.get(options);
-                status.innerText = "Verifying security token...";
+                status.innerText = "セキュリティトークンを検証中...";
 
                 // To verify client-side, we need to know WHICH user this is.
-                // WebAuthn returns the userHandle (if provided during registration).
                 const userHandle = assertion.response.userHandle;
                 let uid = "";
                 if (userHandle) {
                     uid = new TextDecoder().decode(userHandle);
                 }
 
-                // If uid is missing (some authenticators), we'd need to search all admins for the credentialId.
-                // For this implementation, we'll try to find the matching admin in Firestore.
                 const credentialId = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)));
 
-                status.innerText = "Searching for administrator profile...";
+                status.innerText = "管理者プロファイルを照合しています...";
                 const adminsSnap = await getDocs(collection(db, "admins"));
                 let matchedAdmin = null;
                 let matchedUid = "";
@@ -1198,7 +1228,7 @@
                 });
 
                 if (matchedAdmin) {
-                    status.innerText = "Access granted! Syncing session...";
+                    status.innerText = "認証に成功しました。同期中...";
                     // In a serverless setup, we simulate Auth.
                     // IMPORTANT: This does not trigger a Firebase Auth session (request.auth will be null).
                     // We rely on relaxed Firestore Rules (read: if true) and E2EE for security.
