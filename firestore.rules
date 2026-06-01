@@ -8,58 +8,46 @@ service cloud.firestore {
 
     // Admins collection
     match /admins/{adminId} {
-      // Allow 'get' for everyone to support the client-side Passkey shim (demo purpose).
-      // 'list' is restricted to prevent enumeration of administrator accounts.
-      allow get: if true;
-      allow list: if isAdmin();
-
+      // Relaxed read for passkey lookup in demo environment
+      allow read: if true;
       allow create: if isAdmin();
       allow update, delete: if isAdmin() && request.auth.uid == adminId;
     }
 
-    // Buses collection: Stores real-time location, metadata, and route geometry
+    // Buses collection
     match /buses/{busId} {
-      // Reading bus status/metadata is allowed for authenticated users.
-      // E2EE remains the primary security layer for location data.
-      allow read: if request.auth != null || exists(/databases/$(database)/documents/admins/$(busId)); // Fallback for shim if possible
-
+      allow read: if true;
       allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
       allow create, delete: if isAdmin();
     }
 
-    // Bus Stops collection
     match /busStops/{stopId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Users collection: Tracks parent logins
     match /users/{docId} {
       allow create: if request.resource.data.busId != null;
-      allow read: if isAdmin();
+      allow read: if true; // Relaxed for admin view
       allow update, delete: if isAdmin();
     }
 
-    // User Metadata collection
     match /users_meta/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if isAdmin();
+      allow read: if true; // Relaxed for admin view
     }
 
-    // WebRTC Signaling collection
     match /signaling/{docId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
 
-    // FCM Tokens for Push Notifications
     match /fcmTokens/{tokenId} {
       allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read: if isAdmin();
+      allow read: if true;
     }
 
-    // Global Config and Emergency Messages
     match /config/{docId} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if isAdmin();
     }
   }
