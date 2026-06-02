@@ -572,17 +572,25 @@
                 try {
                     const adminDoc = await getDoc(doc(db, "admins", user.uid));
                     if (adminDoc.exists()) {
-                        // Check if Passkey verification is done for this session
-                        if (sessionStorage.getItem('admin_verified') === 'true' && sessionStorage.getItem('admin_uid') === user.uid) {
+                        const data = adminDoc.data();
+                        const hasPasskeys = data.passkeys && data.passkeys.length > 0;
+                        const isVerified = sessionStorage.getItem('admin_verified') === 'true' && sessionStorage.getItem('admin_uid') === user.uid;
+
+                        // Allow entry if already verified OR if this is the initial login (no passkeys registered yet)
+                        if (isVerified || !hasPasskeys) {
+                            if (!hasPasskeys) {
+                                sessionStorage.setItem('admin_verified', 'true');
+                                sessionStorage.setItem('admin_uid', user.uid);
+                            }
                             currentUser = user;
-                            adminData = adminDoc.data();
+                            adminData = data;
                             document.getElementById('auth-modal').classList.add('hidden');
                             document.getElementById('admin-email').innerText = user.email;
                             document.getElementById('inquiry-link').href = `${GAS_INQUIRY_URL}?uid=${user.uid}`;
                             loadData();
                             renderPasskeys();
                         } else {
-                            // Redirect to Step-up Auth (Passkey)
+                            // Redirect to Step-up Auth (Passkey) if passkeys are registered but not verified this session
                             window.location.href = 'secure-auth.html';
                         }
                     } else {
