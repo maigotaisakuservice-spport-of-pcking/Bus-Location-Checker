@@ -29,10 +29,11 @@
 
         <div class="p-8 text-center" id="initial-state">
             <h1 class="text-xl font-bold text-slate-800 mb-6">本人認証を開始します</h1>
+            <p id="user-info" class="text-sm font-bold text-blue-600 mb-2">確認中...</p>
             <p class="text-sm text-slate-500 mb-8 leading-relaxed">
-                セキュリティ保護のため、登録済みのパスキー（生体認証・暗号化キー）による認証が必要です。
+                セキュリティ保護のため、登録済みのパスキー（生体認証・暗号化キー）による追加認証が必要です。
             </p>
-            <button onclick="startAuth()" class="w-full bg-[#003399] text-white py-4 rounded font-bold hover:bg-[#002266] transition shadow-lg">
+            <button onclick="startAuth()" id="auth-btn" disabled class="w-full bg-[#003399] text-white py-4 rounded font-bold hover:bg-[#002266] transition shadow-lg opacity-50 cursor-not-allowed">
                 認証を実行する
             </button>
             <div class="mt-6">
@@ -72,26 +73,69 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp(window.firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+
+        let currentUser = null;
 
         document.getElementById('current-date').innerText = new Date().toLocaleString();
 
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('user-info').innerText = `ユーザー: ${user.email}`;
+                const btn = document.getElementById('auth-btn');
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                location.href = 'index.html';
+            }
+        });
+
+        // Utility for robust base64 encoding of ArrayBuffers
+        function bufferToBase64(buffer) {
+            return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        }
+
         window.startAuth = async () => {
+            if (!currentUser) return;
+
             document.getElementById('initial-state').classList.add('hidden');
             document.getElementById('processing-state').classList.remove('hidden');
             const status = document.getElementById('status-text');
 
             try {
+                console.log("--- Starting Step-up Passkey Authentication ---");
+
+                // Fetch admin document to get allowed credentials
+                status.innerText = "認証プロファイルを読込中...";
+                const adminDoc = await getDoc(doc(db, "admins", currentUser.uid));
+                if (!adminDoc.exists()) throw new Error("管理者権限が見つかりません");
+
+                const adminData = adminDoc.data();
+                if (!adminData.passkeys || adminData.passkeys.length === 0) {
+                    throw new Error("パスキーが登録されていません。先に管理画面の設定から登録してください。");
+                }
+
                 const challenge = window.crypto.getRandomValues(new Uint8Array(32));
+
+                // Construct allowCredentials list for better UX
+                const allowCredentials = adminData.passkeys.map(pk => ({
+                    type: 'public-key',
+                    id: Uint8Array.from(atob(pk.id), c => c.charCodeAt(0))
+                }));
+
                 const options = {
                     publicKey: {
                         challenge: challenge,
                         timeout: 60000,
                         userVerification: "required",
-                        rpId: window.location.hostname
+                        rpId: window.location.hostname,
+                        allowCredentials: allowCredentials
                     }
                 };
 
@@ -99,47 +143,18 @@
                 const assertion = await navigator.credentials.get(options);
 
                 status.innerText = "署名を検証中...";
-                const credentialId = btoa(String.fromCharCode(...new Uint8Array(assertion.rawId)));
-                console.log("Credential ID (Base64):", credentialId);
+                const credentialId = bufferToBase64(assertion.rawId);
 
-                // Optimized Search: Check userHandle (UID) first if provided
-                const userHandle = assertion.response.userHandle;
-                let matchedAdmin = null;
-                let matchedUid = "";
+                // Verify the matched credential belongs to the current user
+                const matchedKey = adminData.passkeys.find(pk => pk.id === credentialId);
 
-                if (userHandle) {
-                    const uid = new TextDecoder().decode(userHandle);
-                    console.log("User Handle found (UID):", uid);
-                    const adminDoc = await getDoc(doc(db, "admins", uid));
-                    if (adminDoc.exists()) {
-                        const data = adminDoc.data();
-                        if (data.passkeys && data.passkeys.find(pk => pk.id === credentialId)) {
-                            matchedAdmin = data;
-                            matchedUid = uid;
-                        }
-                    }
-                }
-
-                // Fallback: Collection-wide search if UID check failed or was missing
-                if (!matchedAdmin) {
-                    console.log("Falling back to collection-wide search...");
-                    const adminsSnap = await getDocs(collection(db, "admins"));
-                    adminsSnap.forEach(doc => {
-                        const data = doc.data();
-                        if (data.passkeys && data.passkeys.find(pk => pk.id === credentialId)) {
-                            matchedAdmin = data;
-                            matchedUid = doc.id;
-                        }
-                    });
-                }
-
-                if (matchedAdmin) {
+                if (matchedKey) {
                     status.innerText = "認証成功。リダイレクト中...";
                     sessionStorage.setItem('admin_verified', 'true');
-                    sessionStorage.setItem('admin_uid', matchedUid);
+                    sessionStorage.setItem('admin_uid', currentUser.uid);
                     setTimeout(() => location.href = 'index.html', 1500);
                 } else {
-                    throw new Error("登録されていないデバイスです");
+                    throw new Error("このデバイスは現在の管理者アカウントに関連付けられていません");
                 }
             } catch (err) {
                 console.error("Auth failed:", err);

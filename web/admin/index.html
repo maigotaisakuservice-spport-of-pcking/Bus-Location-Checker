@@ -461,11 +461,7 @@
             <p class="text-slate-500 text-center mb-10 text-sm font-medium">運行管理システムへのアクセスを許可してください</p>
 
             <div id="login-form" class="space-y-6">
-                <button id="btn-passkey-login" onclick="location.href='secure-auth.html'" class="w-full bg-blue-600 text-white py-5 rounded-[1.5rem] font-bold flex items-center justify-center space-x-4 hover:bg-blue-700 transition active:scale-95 shadow-xl shadow-blue-200">
-                    <span class="text-xl">🔑</span>
-                    <span>パスキーでログイン</span>
-                </button>
-                <button onclick="loginWithGoogle()" class="w-full bg-slate-900 text-white py-5 rounded-[1.5rem] font-bold flex items-center justify-center space-x-4 hover:bg-slate-800 transition active:scale-95 shadow-xl">
+                <button onclick="loginWithGoogle()" class="w-full bg-blue-600 text-white py-5 rounded-[1.5rem] font-bold flex items-center justify-center space-x-4 hover:bg-blue-700 transition active:scale-95 shadow-xl shadow-blue-200">
                     <svg class="w-6 h-6" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/></svg>
                     <span>Googleアカウントでログイン</span>
                 </button>
@@ -572,41 +568,36 @@
         }
 
         onAuthStateChanged(auth, async (user) => {
-            if (sessionStorage.getItem('admin_verified') === 'true') {
-                const uid = sessionStorage.getItem('admin_uid');
-                if (!currentUser || currentUser.uid !== uid) {
-                    const adminDoc = await getDoc(doc(db, "admins", uid));
-                    if (adminDoc.exists()) {
-                        currentUser = { uid, email: adminDoc.data().email || 'Passkey User' };
-                        adminData = adminDoc.data();
-                        document.getElementById('auth-modal').classList.add('hidden');
-                        document.getElementById('admin-email').innerText = currentUser.email;
-                        document.getElementById('inquiry-link').href = `${GAS_INQUIRY_URL}?uid=${uid}`;
-                        loadData();
-                        renderPasskeys();
-                    }
-                }
-                return;
-            }
-
             if (user) {
                 try {
                     const adminDoc = await getDoc(doc(db, "admins", user.uid));
                     if (adminDoc.exists()) {
-                        currentUser = user;
-                        adminData = adminDoc.data();
-                        document.getElementById('auth-modal').classList.add('hidden');
-                        document.getElementById('admin-email').innerText = user.email;
-                        document.getElementById('inquiry-link').href = `${GAS_INQUIRY_URL}?uid=${user.uid}`;
-                        loadData();
-                        renderPasskeys();
+                        // Check if Passkey verification is done for this session
+                        if (sessionStorage.getItem('admin_verified') === 'true' && sessionStorage.getItem('admin_uid') === user.uid) {
+                            currentUser = user;
+                            adminData = adminDoc.data();
+                            document.getElementById('auth-modal').classList.add('hidden');
+                            document.getElementById('admin-email').innerText = user.email;
+                            document.getElementById('inquiry-link').href = `${GAS_INQUIRY_URL}?uid=${user.uid}`;
+                            loadData();
+                            renderPasskeys();
+                        } else {
+                            // Redirect to Step-up Auth (Passkey)
+                            window.location.href = 'secure-auth.html';
+                        }
                     } else {
                         showError("管理者権限がありません。UID: " + user.uid + " をFirestoreに登録してください。");
                         document.getElementById('auth-modal').classList.remove('hidden');
+                        await signOut(auth);
                     }
                 } catch (err) {
                     console.error("Auth check error:", err);
-                    showError("認証確認中にエラーが発生しました: " + err.message);
+                    if (err.code === 'permission-denied') {
+                        showError("データベースへのアクセスが拒否されました。管理者設定を確認してください。");
+                    } else {
+                        showError("認証確認中にエラーが発生しました: " + err.message);
+                    }
+                    document.getElementById('auth-modal').classList.remove('hidden');
                 }
             } else {
                 document.getElementById('auth-modal').classList.remove('hidden');
@@ -1135,6 +1126,7 @@
             if (!name) return;
 
             try {
+                console.log("--- Registering Passkey ---");
                 const challenge = window.crypto.getRandomValues(new Uint8Array(32));
                 const userId = new TextEncoder().encode(currentUser.uid);
 
@@ -1154,6 +1146,8 @@
                 };
 
                 const credential = await navigator.credentials.create(options);
+                console.log("Credential created:", credential);
+
                 const pk = {
                     id: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
                     name: name,
@@ -1161,6 +1155,7 @@
                     publicKey: btoa(String.fromCharCode(...new Uint8Array(credential.response.getPublicKey()))),
                     algorithm: credential.response.getPublicKeyAlgorithm()
                 };
+                console.log("New Passkey Object:", pk);
 
                 const newPasskeys = [...(adminData.passkeys || []), pk];
                 await updateDoc(doc(db, "admins", currentUser.uid), { passkeys: newPasskeys });
