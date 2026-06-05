@@ -66,3 +66,60 @@ window.Encryption = {
     }
   }
 };
+
+/**
+ * Maintenance Check System
+ */
+(async function checkMaintenance() {
+  const currentPath = window.location.pathname;
+  if (currentPath.endsWith('maintenance.html')) return;
+
+  // Determine root path for setting.txt (supporting both root and sub-directory loads)
+  const scripts = document.getElementsByTagName('script');
+  let root = '/';
+  for (let s of scripts) {
+    if (s.src.includes('utils.js?root=1')) root = '../';
+  }
+
+  try {
+    const res = await fetch(root + 'setting.txt?v=' + Date.now());
+    const text = await res.text();
+    const line = text.trim();
+
+    if (line === 'true') {
+      window.location.href = (root === '../' ? '/' : '') + 'maintenance.html';
+      return;
+    }
+
+    // Format: true 2026/02/08/23:00~24:30
+    if (line.startsWith('true ')) {
+      const periodStr = line.replace('true ', '');
+      const parts = periodStr.split('~');
+      if (parts.length === 2) {
+        const startRaw = parts[0]; // 2026/02/08/23:00
+        const endRaw = parts[1];   // 24:30
+
+        const startParts = startRaw.split('/');
+        const dateStr = startParts.slice(0, 3).join('/'); // 2026/02/08
+        const startTimeStr = startParts[3]; // 23:00
+
+        const parseTime = (dStr, tStr) => {
+          const [h, m] = tStr.split(':').map(Number);
+          const d = new Date(dStr);
+          d.setHours(h, m, 0, 0);
+          return d;
+        };
+
+        const startDate = parseTime(dateStr, startTimeStr);
+        const endDate = parseTime(dateStr, endRaw);
+        const now = new Date();
+
+        if (now >= startDate && now <= endDate) {
+          window.location.href = (root === '../' ? '/' : '') + 'maintenance.html?period=' + encodeURIComponent(periodStr);
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Maintenance check failed", e);
+  }
+})();
