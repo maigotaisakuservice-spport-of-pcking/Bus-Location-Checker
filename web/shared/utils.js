@@ -77,8 +77,12 @@ window.Encryption = {
   // Determine root path for setting.txt (supporting both root and sub-directory loads)
   const scripts = document.getElementsByTagName('script');
   let root = '/';
+  let isSubDir = false;
   for (let s of scripts) {
-    if (s.src.includes('utils.js?root=1')) root = '../';
+    if (s.src.includes('utils.js?root=1')) {
+      root = '../../';
+      isSubDir = true;
+    }
   }
 
   try {
@@ -87,7 +91,7 @@ window.Encryption = {
     const line = text.trim();
 
     if (line === 'true') {
-      window.location.href = (root === '../' ? '/' : '') + 'maintenance.html';
+      window.location.href = (isSubDir ? root : '') + 'maintenance.html';
       return;
     }
 
@@ -115,7 +119,7 @@ window.Encryption = {
         const now = new Date();
 
         if (now >= startDate && now <= endDate) {
-          window.location.href = (root === '../' ? '/' : '') + 'maintenance.html?period=' + encodeURIComponent(periodStr);
+          window.location.href = (isSubDir ? root : '') + 'maintenance.html?period=' + encodeURIComponent(periodStr);
         }
       }
     }
