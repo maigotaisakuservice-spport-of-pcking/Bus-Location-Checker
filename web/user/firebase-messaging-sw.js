@@ -8,7 +8,8 @@ firebase.initializeApp({
   projectId: "bus-location-checker-service",
   storageBucket: "bus-location-checker-service.firebasestorage.app",
   messagingSenderId: "371379487729",
-  appId: "1:371379487729:web:3dd7a10103f33fc683ba50"
+  appId: "1:371379487729:web:3dd7a10103f33fc683ba50",
+  measurementId: "G-GCVHKY0X7F"
 });
 
 const messaging = firebase.messaging();

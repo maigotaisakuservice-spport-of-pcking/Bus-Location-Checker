@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メンテナンス中 - パソコン大魔王グループ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        .bus-float { animation: float 3s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-6 font-sans">
+    <div class="max-w-md w-full bg-white p-10 rounded-[3rem] shadow-2xl text-center relative overflow-hidden">
+        <!-- Background Decoration -->
+        <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
+
+        <div class="mb-10 bus-float">
+            <span class="text-8xl">🚌</span>
+        </div>
+
+        <h1 class="text-3xl font-black text-slate-800 mb-4 tracking-tighter">
+            システムメンテナンス中
+        </h1>
+
+        <p class="text-slate-500 font-medium leading-relaxed mb-8">
+            より安全で快適なサービス提供のため、現在システムメンテナンスを実施しております。<br>
+            ご不便をおかけしますが、終了まで今しばらくお待ちください。
+        </p>
+
+        <div class="bg-blue-50 p-6 rounded-[2rem] border border-blue-100 mb-8">
+            <p class="text-blue-600 text-xs font-black uppercase tracking-widest mb-2">予定期間</p>
+            <p id="maintenance-period" class="text-slate-700 font-bold">作業完了まで</p>
+        </div>
+
+        <div class="pt-6 border-t border-slate-100">
+            <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">パソコン大魔王グループ</p>
+            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Security Service & Systems</p>
+        </div>
+    </div>
+
+    <script>
+        // Optional: Extract date from URL or local storage to show estimated end time
+        const params = new URLSearchParams(window.location.search);
+        const period = params.get('period');
+        if (period) {
+            document.getElementById('maintenance-period').innerText = period.replace('~', ' 〜 ');
+        }
+    </script>
+</body>
+</html>

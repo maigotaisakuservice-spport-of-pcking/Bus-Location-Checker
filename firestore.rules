@@ -1,63 +1,52 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Check if the current user is an authenticated administrator
+    // Admin checks
     function isAdmin() {
       return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Admins collection
+    // Admins can read and write all system data
     match /admins/{adminId} {
-      allow read: if request.auth != null && request.auth.uid == adminId;
-      // Admin creation should be done via Firebase Console or a separate secure process
-      // to avoid exposing secrets in client-side code.
-      // For initial setup, we allow the first admin if the collection is empty (optional)
-      // but for production, recommend manual console entry.
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && request.auth.uid == adminId;
+      allow read, write: if request.auth != null && (request.auth.uid == adminId || isAdmin());
     }
 
-    // Buses collection: Stores real-time location, metadata, and route geometry
     match /buses/{busId} {
+      // Authenticated users (parents/admins) can read bus info
       allow read: if request.auth != null;
-      allow update: if isAdmin() || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
-      allow create, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // Bus Stops collection
     match /busStops/{stopId} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
     }
 
-    // Users collection: Tracks parent logins with registration year
-    match /users/{docId} {
-      allow create: if request.resource.data.busId != null;
-      allow read: if isAdmin();
-      allow update, delete: if isAdmin();
-    }
-
-    // User Metadata collection: Persists registered buses and "my stop" settings
-    match /users_meta/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // WebRTC Signaling collection
     match /signaling/{docId} {
+      // Signaling is for P2P connection between sender and user
       allow read, write: if request.auth != null;
     }
 
-    // FCM Tokens for Push Notifications
-    match /fcmTokens/{tokenId} {
-      // Authenticated users can create/update their own tokens
-      allow create, update: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read: if isAdmin();
-    }
-
-    // Global Config and Emergency Messages
     match /config/{docId} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
+    }
+
+    // User metadata and personal settings
+    match /users_meta/{userId} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /users/{docId} {
+      // Access to the collection mapping Google UIDs to encryption profiles
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+      // Allow registration of the user's own profile
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /fcmTokens/{tokenId} {
+      allow read, write: if request.auth != null && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
     }
   }
 }
