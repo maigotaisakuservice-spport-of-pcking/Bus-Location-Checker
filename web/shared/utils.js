@@ -76,51 +76,48 @@ window.Encryption = {
 
   // Determine root path for setting.txt (supporting both root and sub-directory loads)
   const scripts = document.getElementsByTagName('script');
-  let root = '/';
-  let isSubDir = false;
+  let root = './';
   for (let s of scripts) {
     if (s.src.includes('utils.js?root=1')) {
       root = '../../';
-      isSubDir = true;
+      break;
     }
   }
 
   try {
     const res = await fetch(root + 'setting.txt?v=' + Date.now());
+    if (!res.ok) return;
     const text = await res.text();
     const line = text.trim();
+    console.log("[Maintenance] Setting:", line);
 
     if (line === 'true') {
-      window.location.href = (isSubDir ? root : '') + 'maintenance.html';
+      window.location.href = root + 'maintenance.html';
       return;
     }
 
-    // Format: true 2026/02/08/23:00~24:30
-    if (line.startsWith('true ')) {
-      const periodStr = line.replace('true ', '');
-      const parts = periodStr.split('~');
-      if (parts.length === 2) {
-        const startRaw = parts[0]; // 2026/02/08/23:00
-        const endRaw = parts[1];   // 24:30
+    // Format support: true 2026/06/06/09:00~13:00 or true(2026/06/06/9:00〜13:00)
+    const match = line.match(/true[^\d]*([\d\/]+)\/([\d:]+)\s*[~〜]\s*([\d:]+)/);
+    if (match) {
+      const dateStr = match[1]; // YYYY/MM/DD
+      const startTimeStr = match[2]; // HH:mm
+      const endTimeStr = match[3]; // HH:mm
 
-        const startParts = startRaw.split('/');
-        const dateStr = startParts.slice(0, 3).join('/'); // 2026/02/08
-        const startTimeStr = startParts[3]; // 23:00
+      const parseTime = (dStr, tStr) => {
+        const [h, m] = tStr.split(':').map(Number);
+        const parts = dStr.split('/').map(Number);
+        const d = new Date(parts[0], parts[1] - 1, parts[2]); // month is 0-indexed
+        d.setHours(h, m, 0, 0);
+        return d;
+      };
 
-        const parseTime = (dStr, tStr) => {
-          const [h, m] = tStr.split(':').map(Number);
-          const d = new Date(dStr);
-          d.setHours(h, m, 0, 0);
-          return d;
-        };
+      const startDate = parseTime(dateStr, startTimeStr);
+      let endDate = parseTime(dateStr, endTimeStr);
+      const now = new Date();
 
-        const startDate = parseTime(dateStr, startTimeStr);
-        const endDate = parseTime(dateStr, endRaw);
-        const now = new Date();
-
-        if (now >= startDate && now <= endDate) {
-          window.location.href = (isSubDir ? root : '') + 'maintenance.html?period=' + encodeURIComponent(periodStr);
-        }
+      if (now >= startDate && now <= endDate) {
+        console.log("[Maintenance] Within window. Redirecting...");
+        window.location.href = root + 'maintenance.html?period=' + encodeURIComponent(dateStr + ' ' + startTimeStr + '〜' + endTimeStr);
       }
     }
   } catch (e) {
